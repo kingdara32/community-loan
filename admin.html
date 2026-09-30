@@ -1,0 +1,612 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin — Community Loan</title>
+<style>
+:root{--r:#7a0f16;--r2:#9b0d14;--g:linear-gradient(135deg,#9b0d14,#5c0a10)}
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f1f2f5;color:#1c1c1e}
+a{color:inherit}
+/* ---- login gate ---- */
+.loginwrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.loginbox{background:#fff;border-radius:14px;box-shadow:0 4px 24px #0002;padding:32px;width:100%;max-width:340px;text-align:center}
+.loginbox h1{font-size:20px;margin:0 0 4px}.loginbox p{color:#777;font-size:13px;margin:0 0 20px}
+.loginbox input{width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px}
+.loginbox button{width:100%;padding:12px;border:0;border-radius:8px;background:var(--g);color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+.loginerr{color:#c0392b;font-size:13px;min-height:18px;margin-bottom:6px}
+/* ---- shell ---- */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:210px;flex:none;background:#1c1f26;color:#c7cad1;padding:18px 0}
+.brand{padding:0 18px 18px;font-weight:800;color:#fff;font-size:16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #2c2f38;margin-bottom:10px}
+.brand span{color:#e8b445}
+.navitem{padding:11px 18px;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:10px;border-left:3px solid transparent}
+.navitem:hover{background:#262a33}
+.navitem.on{background:#262a33;border-left-color:#e8b445;color:#fff;font-weight:600}
+.main{flex:1;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 22px;display:flex;justify-content:space-between;align-items:center}
+.topbar b{font-size:15px}
+.topstats{display:flex;gap:10px}
+.tchip{background:#1c1f26;color:#fff;border-radius:6px;padding:7px 12px;font-size:12px}
+.tchip b{color:#e8b445;margin-left:5px}
+.logoutbtn{background:#fff;border:1px solid #ddd;border-radius:6px;padding:7px 12px;font-size:12px;cursor:pointer;margin-left:10px}
+.content{padding:22px}
+/* ---- cards / tables ---- */
+.card{background:#fff;border-radius:12px;box-shadow:0 1px 3px #0001;margin-bottom:18px}
+.cardhd{padding:14px 18px;font-weight:700;font-size:14px;border-bottom:1px solid #eee}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.statcard{background:#fff;border-radius:12px;box-shadow:0 1px 3px #0001;padding:18px}
+.statcard .n{font-size:26px;font-weight:800;color:var(--r2)}
+.statcard .l{font-size:12px;color:#888;margin-top:4px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid #eee}
+.toolbar input{padding:9px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px}
+.toolbar button{padding:9px 12px;border:0;border-radius:6px;background:var(--r2);color:#fff;font-size:13px;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f6f7f9;text-align:left;padding:10px 12px;font-size:11px;letter-spacing:.03em;color:#666;text-transform:uppercase;white-space:nowrap}
+td{padding:10px 12px;border-top:1px solid #f0f1f3;vertical-align:top}
+tr:hover td{background:#fafbfc}
+.badge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700}
+.badge.enabled,.badge.approved,.badge.paid,.badge.disbursed,.badge.completed{background:#e6f6ec;color:#16794c}
+.badge.disabled,.badge.rejected{background:#fdeaea;color:#c0392b}
+.badge.pending{background:#fff3e0;color:#b06a00}
+.badge.admin{background:#fdf1da;color:#a3720b}
+.badge.auto{background:#eef1f5;color:#5a6270}
+.opbtns{display:flex;flex-wrap:wrap;gap:5px;max-width:330px}
+.opbtn{border:0;border-radius:5px;padding:5px 9px;font-size:11.5px;cursor:pointer;background:#eef1f6;color:#2b3446;white-space:nowrap}
+.opbtn.blue{background:#e7effe;color:#1d4ed8}
+.opbtn.red{background:#fdeaea;color:#c0392b}
+.opbtn.gold{background:#fdf1da;color:#a3720b}
+.opbtn.green{background:#e6f6ec;color:#16794c}
+.note{font-size:11.5px;color:#a3720b;background:#fff8ea;border-radius:6px;padding:4px 7px;margin-top:4px;max-width:260px}
+.empty{padding:30px;text-align:center;color:#999;font-size:13px}
+/* ---- modal ---- */
+.modalbg{position:fixed;inset:0;background:#00000066;display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.modalcard{background:#fff;border-radius:12px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto}
+.modalcard.wide{max-width:720px}
+.modalhd{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;font-weight:700;border-bottom:1px solid #eee;position:sticky;top:0;background:#fff}
+.modalhd button{background:none;border:0;font-size:16px;cursor:pointer;color:#888}
+.modalbody{padding:18px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12px;color:#666;margin-bottom:5px;font-weight:600}
+.field input,.field textarea,.field select{width:100%;padding:10px;border:1px solid #ddd;border-radius:7px;font:inherit;font-size:13.5px}
+.field .hint{font-size:11px;color:#999;margin-top:4px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.section{font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;color:#7a0f16;margin:18px 0 10px;padding-top:12px;border-top:1px solid #f0f1f3}
+.section:first-child{margin-top:0;padding-top:0;border-top:0}
+.photorow{display:flex;gap:10px;flex-wrap:wrap}
+.photobox{width:110px}
+.photobox img{width:110px;height:80px;object-fit:cover;border-radius:7px;border:1px solid #e5e7eb;background:#f4f4f4;display:block;cursor:pointer}
+.photobox .ph{width:110px;height:80px;border-radius:7px;border:1px dashed #ccc;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:11px}
+.photobox .lbl{font-size:10.5px;color:#888;margin:4px 0 3px;text-align:center}
+.photobox .del{width:100%;padding:4px;font-size:10.5px;border:0;border-radius:5px;background:#fdeaea;color:#c0392b;cursor:pointer}
+.sigimg{max-width:220px;max-height:100px;border:1px solid #eee;border-radius:7px;background:#fafafa}
+.modalft{display:flex;gap:8px;border-top:1px solid #eee;padding:14px 18px;position:sticky;bottom:0;background:#fff}
+.modalft button{padding:10px 16px;border:0;border-radius:7px;font-size:13.5px;font-weight:700;cursor:pointer}
+.btnmain{background:var(--g);color:#fff}
+.btnghost{background:#f1f2f5;color:#333}
+.btndanger{background:#fdeaea;color:#c0392b}
+.msgline{font-size:12.5px;margin-top:8px}
+.msgline.ok{color:#16794c}.msgline.err{color:#c0392b}
+.contractbox{white-space:pre-wrap;font-size:12.5px;line-height:1.7;background:#fafbfc;border:1px solid #eee;border-radius:8px;padding:16px;font-family:Georgia,serif}
+.tabs{display:flex;gap:6px;padding:10px 18px 0}
+.tab{padding:8px 12px;border-radius:7px 7px 0 0;font-size:12.5px;cursor:pointer;color:#777}
+.tab.on{background:#fff;color:#7a0f16;font-weight:700;box-shadow:0 -2px 0 var(--r2) inset}
+.mtwrap{max-height:340px;overflow-y:auto}
+</style></head><body>
+<div id="app"></div>
+<script>
+const $=s=>document.querySelector(s);
+let TOKEN=localStorage.getItem('admin_token')||'';
+let PAGE='dashboard',STATS={members:0,pendingLoans:0,pendingWithdrawals:0,totalLoans:0};
+let MEMBERS=[],APPS=[],WDRAWS=[],NOTIFS=[],LOGINERR='';
+let Q='',NQ='',NTAB='all';
+let MODAL=null,MDATA=null,MERR='',MOK='';
+
+async function api(path,opt={}){
+ const r=await fetch('/api'+path,{...opt,headers:{'Content-Type':'application/json','x-admin-token':TOKEN,...(opt.headers||{})}});
+ let j={}; try{j=await r.json()}catch{}
+ if(!r.ok) throw new Error(j.error||('Request failed ('+r.status+')'));
+ return j;
+}
+async function tryLogin(){
+ LOGINERR='';
+ const t=$('#logintok').value.trim();
+ if(!t){LOGINERR='Enter the admin token.';render();return}
+ TOKEN=t;
+ try{ await api('/admin/stats'); localStorage.setItem('admin_token',TOKEN); await boot(); }
+ catch(e){ TOKEN=''; LOGINERR='Wrong token, or the server rejected it.'; render(); }
+}
+function logout(){TOKEN='';localStorage.removeItem('admin_token');render()}
+
+async function boot(){
+ try{
+  STATS=await api('/admin/stats');
+  await Promise.all([loadMembers(),loadApps(),loadWithdrawals(),loadNotifs()]);
+ }catch(e){ TOKEN=''; localStorage.removeItem('admin_token'); }
+ render();
+}
+async function loadMembers(){MEMBERS=await api('/admin/members'+(Q?'?q='+encodeURIComponent(Q):''))}
+async function loadApps(){APPS=await api('/admin/applications')}
+async function loadWithdrawals(){WDRAWS=await api('/admin/withdrawals')}
+async function loadNotifs(){NOTIFS=await api('/admin/notifications')}
+async function refreshStats(){STATS=await api('/admin/stats')}
+
+function go(p){PAGE=p;render()}
+function openModal(name,data){MODAL=name;MDATA=data||null;MERR='';MOK='';render()}
+function closeModal(){MODAL=null;MDATA=null;render()}
+
+// ---------- helpers ----------
+const peso=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dt=s=>{if(!s)return'—';const d=new Date(String(s).replace(' ','T')+(String(s).includes('Z')?'':'Z'));return isNaN(d)?s:d.toLocaleString('en-PH',{month:'short',day:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})};
+const dateOnly=s=>{if(!s)return'—';const d=new Date(String(s).replace(' ','T')+(String(s).includes('Z')?'':'Z'));return isNaN(d)?s:d.toLocaleDateString('en-PH',{month:'short',day:'2-digit',year:'numeric'})};
+function within(iso,range){
+ const d=new Date(String(iso).replace(' ','T')+(String(iso).includes('Z')?'':'Z')); if(isNaN(d))return true;
+ const now=new Date(); const startOfDay=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate());
+ const today=startOfDay(now);
+ if(range==='today')return startOfDay(d).getTime()===today.getTime();
+ if(range==='yesterday'){const y=new Date(today);y.setDate(y.getDate()-1);return startOfDay(d).getTime()===y.getTime()}
+ if(range==='week'){const w=new Date(today);w.setDate(w.getDate()-7);return d>=w}
+ if(range==='month'){const m=new Date(today.getFullYear(),today.getMonth(),1);return d>=m}
+ if(range==='lastmonth'){const m0=new Date(today.getFullYear(),today.getMonth()-1,1),m1=new Date(today.getFullYear(),today.getMonth(),1);return d>=m0&&d<m1}
+ return true;
+}
+let MRANGE='all';
+
+// ---------- render ----------
+function render(){
+ const el=$('#app');
+ if(!TOKEN){ el.innerHTML=loginView(); return; }
+ el.innerHTML=shell();
+}
+function loginView(){
+ return `<div class="loginwrap"><div class="loginbox">
+ <h1>💳 Admin</h1><p>Community Loan back office</p>
+ <div class="loginerr">${LOGINERR}</div>
+ <input id="logintok" type="password" placeholder="Admin token" onkeydown="if(event.key==='Enter')tryLogin()">
+ <button onclick="tryLogin()">Log in</button>
+ </div></div>`;
+}
+function shell(){
+ const nav=[['dashboard','📊','Dashboard'],['members','👥','All Members'],['loans','💰','Borrowing List'],['withdrawals','🏧','Withdrawal List'],['notifications','🔔','Notifications']];
+ return `<div class="shell">
+ <div class="sidebar">
+  <div class="brand">💳 <span>Community</span>Loan Admin</div>
+  ${nav.map(([k,ic,l])=>`<div class="navitem ${PAGE===k?'on':''}" onclick="go('${k}')">${ic} ${l}</div>`).join('')}
+ </div>
+ <div class="main">
+  <div class="topbar"><b>${({dashboard:'Dashboard',members:'All Members',loans:'Borrowing List',withdrawals:'Withdrawal List',notifications:'Notifications'})[PAGE]}</b>
+   <div style="display:flex;align-items:center">
+    <div class="topstats">
+     <div class="tchip">New Member<b>${STATS.members}</b></div>
+     <div class="tchip">Pending Loans<b>${STATS.pendingLoans}</b></div>
+     <div class="tchip">Pending Withdrawals<b>${STATS.pendingWithdrawals}</b></div>
+    </div>
+    <button class="logoutbtn" onclick="logout()">Log out</button>
+   </div>
+  </div>
+  <div class="content">${pageBody()}</div>
+ </div>
+ </div>${modalHTML()}`;
+}
+function pageBody(){
+ if(PAGE==='dashboard')return dashboardPage();
+ if(PAGE==='members')return membersPage();
+ if(PAGE==='loans')return loansPage();
+ if(PAGE==='withdrawals')return withdrawalsPage();
+ if(PAGE==='notifications')return notificationsPage();
+ return '';
+}
+
+// ---------- Dashboard ----------
+function dashboardPage(){
+ return `<div class="statgrid">
+ <div class="statcard"><div class="n">${STATS.members}</div><div class="l">Total members</div></div>
+ <div class="statcard"><div class="n">${STATS.totalLoans}</div><div class="l">Total loan applications</div></div>
+ <div class="statcard"><div class="n">${STATS.pendingLoans}</div><div class="l">Loans awaiting review</div></div>
+ <div class="statcard"><div class="n">${STATS.pendingWithdrawals}</div><div class="l">Withdrawals awaiting review</div></div>
+ </div>
+ <div class="card"><div class="cardhd">Recent notifications</div>
+ <table><thead><tr><th>Date</th><th>Recipient</th><th>Type</th><th>Message</th></tr></thead><tbody>
+ ${NOTIFS.slice(0,8).map(n=>`<tr><td>${dt(n.created_at)}</td><td>${n.phone}</td><td><span class="badge ${n.from_admin?'admin':'auto'}">${n.from_admin?'Admin':'Auto'}</span></td><td>${esc(n.message)}</td></tr>`).join('')||`<tr><td class="empty" colspan="4">No notifications yet.</td></tr>`}
+ </tbody></table></div>`;
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+
+// ---------- Members ----------
+function dateFilterRow(current,onclickFn){
+ const opts=[['all','All'],['today','Today'],['yesterday','Yesterday'],['week','This Week'],['month','This Month'],['lastmonth','Last Month']];
+ return `<div style="display:flex;gap:6px;flex-wrap:wrap">${opts.map(([k,l])=>`<button class="opbtn ${current===k?'blue':''}" onclick="${onclickFn}('${k}')">${l}</button>`).join('')}</div>`;
+}
+function setMRange(v){MRANGE=v;render()}
+function membersPage(){
+ const rows=MEMBERS.filter(m=>MRANGE==='all'||within(m.created_at,MRANGE));
+ return `<div class="card">
+ <div class="toolbar" style="justify-content:space-between">
+  <div style="display:flex;gap:8px"><input id="mq" placeholder="Search name or phone" value="${esc(NQ)}" style="width:220px" onkeydown="if(event.key==='Enter')searchMembers()"><button onclick="searchMembers()">Search</button>${NQ?`<button onclick="NQ='';Q='';loadMembers().then(render)" style="background:#eee;color:#333">Clear</button>`:''}</div>
+  ${dateFilterRow(MRANGE,'setMRange')}
+ </div>
+ <div style="overflow-x:auto"><table><thead><tr><th>No.</th><th>Name</th><th>Phone</th><th>Wallet</th><th>Level</th><th>Withdrawal Code</th><th>Registered</th><th>Status</th><th>Note</th><th>Operate</th></tr></thead><tbody>
+ ${rows.length?rows.map((m,i)=>memberRow(m,i+1)).join(''):`<tr><td class="empty" colspan="10">No members found.</td></tr>`}
+ </tbody></table></div></div>`;
+}
+async function searchMembers(){Q=$('#mq').value.trim();NQ=Q;await loadMembers();render()}
+function memberRow(m,no){
+ return `<tr><td>#${no}</td><td>${esc(m.name)||'<span class=\"empty\" style=\"padding:0;display:inline\">—</span>'}</td><td>${m.phone}</td>
+ <td><b>${peso(m.balance)}</b></td>
+ <td>${m.level}${m.levelOverridden?' <span style="color:#b06a00" title="Manually set">✎</span>':''}</td>
+ <td>${m.hasPin?'Set':'<span style=\"color:#b06a00\">Not set</span>'}</td>
+ <td>${dateOnly(m.created_at)}</td><td><span class="badge ${m.status}">${m.status==='enabled'?'Enabled':'Disabled'}</span></td>
+ <td>${m.note?`<div class="note">${esc(m.note)}</div>`:''}</td>
+ <td><div class="opbtns">
+ <button class="opbtn blue" onclick="openMemberDetail(${m.id})">Checking data</button>
+ <button class="opbtn" onclick="openModal('wallet',{id:${m.id},phone:'${m.phone}',balance:${m.balance}})">Wallet</button>
+ <button class="opbtn gold" onclick="openModal('pin',{id:${m.id},phone:'${m.phone}'})">Withdrawal Code</button>
+ <button class="opbtn" onclick="openModal('level',{id:${m.id},phone:'${m.phone}',level:${m.level},levelOverridden:${!!m.levelOverridden}})">Level</button>
+ <button class="opbtn" onclick="openModal('identity',{id:${m.id}})">ID Identity</button>
+ <button class="opbtn" onclick="openModal('password',{id:${m.id},phone:'${m.phone}'})">Password</button>
+ <button class="opbtn" onclick="openModal('bank',{id:${m.id}})">Bank Card Number</button>
+ <button class="opbtn ${m.status==='enabled'?'red':'green'}" onclick="toggleStatus(${m.id},'${m.status==='enabled'?'disabled':'enabled'}')">${m.status==='enabled'?'Disable':'Enable'}</button>
+ </div></td></tr>`;
+}
+async function toggleStatus(id,status){
+ if(status==='disabled'&&!confirm('Disable this account? The member will not be able to log in.'))return;
+ await api(`/admin/members/${id}/status`,{method:'PUT',body:JSON.stringify({status})});
+ await loadMembers();render();
+}
+async function openMemberDetail(id){
+ const d=await api(`/admin/members/${id}`);
+ openModal('checking',d);
+}
+
+// ---------- Checking data modal ----------
+function checkingModal(){
+ const d=MDATA,p=d.profile||{},idp=p.id||{},per=p.personal||{},bank=p.bank||{},sig=p.signature||{};
+ const photo=(field,label)=>`<div class="photobox">${idp[field]?`<img src="/api/admin/file/${idp[field]}?t=${TOKEN}" onclick="viewFile('${idp[field]}')">`:'<div class="ph">No photo</div>'}<div class="lbl">${label}</div>${idp[field]?`<button class="del" onclick="deletePhoto(${d.id},'id','${field}')">Delete</button>`:''}</div>`;
+ return `<div class="modalbg" onclick="closeModal()"><div class="modalcard wide" onclick="event.stopPropagation()">
+ <div class="modalhd">Checking data — ${d.phone}<button onclick="closeModal()">✕</button></div>
+ <div class="modalbody">
+  <div class="field"><label>Phone Number</label><input value="${d.phone}" disabled></div>
+
+  <div class="section">Modify Identity</div>
+  <div class="row2"><div class="field"><label>ID Card Number</label><input id="ck_idno" value="${esc(idp.id_no||'')}"></div>
+  <div class="field"><label>Actual Name</label><input id="ck_name" value="${esc(idp.name||'')}"></div></div>
+
+  <div class="section">ID Photo</div>
+  <div class="photorow">${photo('front','Front')}${photo('back','Back')}${photo('selfie','Selfie')}</div>
+
+  <div class="section">Address & Loan Purpose</div>
+  <div class="row2"><div class="field"><label>Living (Home Address)</label><input id="ck_addr" value="${esc(per.home_address||'')}"></div>
+  <div class="field"><label>Use of Loan</label><input id="ck_purpose" placeholder="Purpose of Apply Loan" value="${esc(per.purpose||'')}"></div></div>
+
+  <div class="section">Emergency Contact</div>
+  <div class="row2"><div class="field"><label>Company Name</label><input id="ck_company" value="${esc(per.company||'')}"></div>
+  <div class="field"><label>Position</label><input id="ck_position" value="${esc(per.position||'')}"></div></div>
+  <div class="row2"><div class="field"><label>Current Address</label><input id="ck_curaddr" value="${esc(per.current_address||'')}"></div>
+  <div class="field"><label>Monthly Income</label><input id="ck_salary" value="${esc(per.salary||'')}"></div></div>
+  <div class="row2"><div class="field"><label>Contact Person 1 — Name</label><input id="ck_f1name" value="${esc(per.family_name||'')}"></div>
+  <div class="field"><label>Relation / Phone</label><div style="display:flex;gap:6px"><input id="ck_f1rel" placeholder="Relation" value="${esc(per.family_rel||'')}"><input id="ck_f1phone" placeholder="Phone" value="${esc(per.family_phone||'')}"></div></div></div>
+  <div class="row2"><div class="field"><label>Contact Person 2 — Name</label><input id="ck_f2name" value="${esc(per.emerg_name||'')}"></div>
+  <div class="field"><label>Relation / Phone</label><div style="display:flex;gap:6px"><input id="ck_f2rel" placeholder="Relation" value="${esc(per.emerg_rel||'')}"><input id="ck_f2phone" placeholder="Phone" value="${esc(per.emerg_phone||'')}"></div></div></div>
+
+  <div class="section">Signature</div>
+  ${sig.image?`<img class="sigimg" src="${sig.image}"><div><button class="opbtn red" style="margin-top:8px" onclick="deletePhoto(${d.id},'signature','image')">Delete signature</button></div>`:`<p class="empty" style="padding:6px 0">No signature on file.</p>`}
+
+  <div class="section">Bank Card Info</div>
+  <div class="row2"><div class="field"><label>Bank Name</label><input id="ck_bankname" value="${esc(bank.bank_name||'')}"></div>
+  <div class="field"><label>Cardholder's Name</label><input id="ck_holder" value="${esc(bank.holder||'')}"></div></div>
+  <div class="field"><label>Account Number</label><input id="ck_acct" value="${esc(bank.account_no||'')}"></div>
+
+  <div id="ckmsg" class="msgline"></div>
+ </div>
+ <div class="modalft">
+  <button class="btnmain" onclick="saveChecking(${d.id})">💾 Save</button>
+  <button class="${d.status==='enabled'?'btndanger':'btnmain'}" onclick="toggleStatus(${d.id},'${d.status==='enabled'?'disabled':'enabled'}');closeModal()">${d.status==='enabled'?'🚫 Deactivate':'✅ Activate'}</button>
+  <button class="btnghost" onclick="showLogins(${d.id})">🕑 Login History</button>
+  <button class="btnghost" onclick="closeModal()">Cancel</button>
+ </div>
+ </div></div>`;
+}
+async function saveChecking(id){
+ try{
+  await api(`/admin/members/${id}/checking`,{method:'PUT',body:JSON.stringify({
+   id:{id_no:$('#ck_idno').value.trim(),name:$('#ck_name').value.trim()},
+   personal:{home_address:$('#ck_addr').value.trim(),purpose:$('#ck_purpose').value.trim(),company:$('#ck_company').value.trim(),
+    position:$('#ck_position').value.trim(),current_address:$('#ck_curaddr').value.trim(),salary:$('#ck_salary').value.trim(),
+    family_name:$('#ck_f1name').value.trim(),family_rel:$('#ck_f1rel').value.trim(),family_phone:$('#ck_f1phone').value.trim(),
+    emerg_name:$('#ck_f2name').value.trim(),emerg_rel:$('#ck_f2rel').value.trim(),emerg_phone:$('#ck_f2phone').value.trim()},
+   bank:{bank_name:$('#ck_bankname').value.trim(),holder:$('#ck_holder').value.trim(),account_no:$('#ck_acct').value.trim()},
+  })});
+  $('#ckmsg').textContent='Saved.';$('#ckmsg').className='msgline ok';
+  await loadMembers();
+ }catch(e){$('#ckmsg').textContent=e.message;$('#ckmsg').className='msgline err'}
+}
+async function deletePhoto(id,section,field){
+ if(!confirm('Delete this file?'))return;
+ await api(`/admin/members/${id}/photo-delete`,{method:'POST',body:JSON.stringify({section,field})});
+ const d=await api(`/admin/members/${id}`); MDATA=d; render();
+}
+async function viewFile(name){
+ const r=await fetch('/api/admin/file/'+name,{headers:{'x-admin-token':TOKEN}});
+ window.open(URL.createObjectURL(await r.blob()));
+}
+async function showLogins(id){
+ const rows=await api(`/admin/members/${id}/logins`);
+ alert(rows.length?rows.map(r=>dt(r.created_at)+' — '+(r.ua||'unknown device')).join('\\n'):'No login history yet.');
+}
+
+// ---------- quick-edit modals ----------
+function walletModal(){
+ const d=MDATA;
+ return simpleModal('Wallet Modification',`
+  <div class="field"><label>Current balance</label><input value="${peso(d.balance)}" disabled></div>
+  <div class="field"><label>New balance</label><input id="wa_val" type="number" step="0.01" value="${d.balance}"></div>
+  <div class="field .hint" style="font-size:11px;color:#999">Recorded as an auditable adjustment (not an overwrite) — the member's balance history keeps this entry, and they're notified of the new total.</div>`,
+  `saveWallet(${d.id})`);
+}
+async function saveWallet(id){
+ try{ const j=await api(`/admin/members/${id}/wallet`,{method:'PUT',body:JSON.stringify({balance:Number($('#wa_val').value)})});
+  MOK='Saved. Member notified.';await loadMembers();render();
+ }catch(e){MERR=e.message;render()}
+}
+function pinModal(){
+ const d=MDATA;
+ return simpleModal('Withdrawal Code',`
+  <div class="field"><label>New withdrawal code (4–6 digits)</label><input id="pin_val" inputmode="numeric" placeholder="e.g. 4321"></div>
+  <div class="field .hint" style="font-size:11px;color:#999">Only staff can set this. The member sees it appear in their notification bell — never typed in by them.</div>`,
+  `savePin(${d.id})`);
+}
+async function savePin(id){
+ try{ await api(`/admin/members/${id}/pin`,{method:'PUT',body:JSON.stringify({pin:$('#pin_val').value.trim()})});
+  MOK='Code set. Member notified.';await loadMembers();render();
+ }catch(e){MERR=e.message;render()}
+}
+function levelModal(){
+ const d=MDATA;
+ const opts=[1,2,3,4,5].map(n=>`<option value="${n}" ${d.level===n?'selected':''}>${n}</option>`).join('');
+ return simpleModal('Level',`
+  <div class="field"><label>Current level</label><input value="${d.level}${d.levelOverridden?' (manually set)':' (automatic)'}" disabled></div>
+  <div class="field"><label>New level</label><select id="lv_val">${opts}</select></div>
+  <div class="field .hint" style="font-size:11px;color:#999">Level is normally computed from real activity (profile complete → applied → approved/disbursed → repaid). Setting it here overrides that until you clear it.</div>
+  <button class="opbtn" style="margin-top:6px" onclick="clearLevel(${d.id})">↺ Clear override (back to automatic)</button>`,
+  `saveLevel(${d.id})`);
+}
+async function saveLevel(id){
+ try{ await api(`/admin/members/${id}/level`,{method:'PUT',body:JSON.stringify({level:Number($('#lv_val').value)})});
+  MOK='Level updated.';await loadMembers();render();
+ }catch(e){MERR=e.message;render()}
+}
+async function clearLevel(id){
+ try{ await api(`/admin/members/${id}/level`,{method:'PUT',body:JSON.stringify({level:null})});
+  MOK='Level reset to automatic.';await loadMembers();render();
+ }catch(e){MERR=e.message;render()}
+}
+function identityModal(){
+ const d=MDATA;
+ return simpleModal('Modify ID identity',`
+  <div class="field"><label>ID Card Number</label><input id="id_no"></div>
+  <div class="field"><label>Actual Name</label><input id="id_name"></div>`,
+  `saveIdentity(${d.id})`);
+}
+async function saveIdentity(id){
+ try{ await api(`/admin/members/${id}/identity`,{method:'PUT',body:JSON.stringify({id_no:$('#id_no').value.trim(),name:$('#id_name').value.trim()})});
+  MOK='Saved.';await loadMembers();render();
+ }catch(e){MERR=e.message;render()}
+}
+function passwordModal(){
+ const d=MDATA;
+ return simpleModal('Reset password',`
+  <div class="field"><label>New password (min 6 characters)</label><input id="pw_val" type="text"></div>
+  <div class="field .hint" style="font-size:11px;color:#999">The member is notified their password was reset by staff.</div>`,
+  `savePassword(${d.id})`);
+}
+async function savePassword(id){
+ try{ await api(`/admin/members/${id}/password`,{method:'PUT',body:JSON.stringify({password:$('#pw_val').value})});
+  MOK='Password reset.';render();
+ }catch(e){MERR=e.message;render()}
+}
+function bankModal(){
+ const d=MDATA;
+ return simpleModal('Modify bank account',`
+  <div class="field"><label>Bank Name</label><input id="bk_name"></div>
+  <div class="field"><label>Cardholder's Name</label><input id="bk_holder"></div>
+  <div class="field"><label>Account Number</label><input id="bk_acct"></div>`,
+  `saveBank(${d.id})`);
+}
+async function saveBank(id){
+ try{ await api(`/admin/members/${id}/bank`,{method:'PUT',body:JSON.stringify({bank_name:$('#bk_name').value.trim(),holder:$('#bk_holder').value.trim(),account_no:$('#bk_acct').value.trim()})});
+  MOK='Saved.';await loadMembers();render();
+ }catch(e){MERR=e.message;render()}
+}
+function simpleModal(title,bodyHTML,saveCall){
+ return `<div class="modalbg" onclick="closeModal()"><div class="modalcard" onclick="event.stopPropagation()">
+ <div class="modalhd">${title}<button onclick="closeModal()">✕</button></div>
+ <div class="modalbody">${bodyHTML}${MERR?`<div class="msgline err">${esc(MERR)}</div>`:''}${MOK?`<div class="msgline ok">${esc(MOK)}</div>`:''}</div>
+ <div class="modalft"><button class="btnmain" onclick="${saveCall}">Save</button><button class="btnghost" onclick="closeModal()">Close</button></div>
+ </div></div>`;
+}
+
+// ---------- Borrowing List ----------
+function loansPage(){
+ const rows=APPS.filter(a=>MRANGE==='all'||within(a.created_at,MRANGE));
+ return `<div class="card">
+ <div class="toolbar" style="justify-content:space-between">
+  <div style="font-size:12.5px;color:#888">${rows.length} application${rows.length===1?'':'s'}</div>
+  ${dateFilterRow(MRANGE,'setMRange')}
+ </div>
+ <div style="overflow-x:auto"><table><thead><tr><th>No.</th><th>Order Number</th><th>Name</th><th>Username</th><th>Loan Amount</th><th>Term</th><th>Created</th><th>Status</th><th>Operate</th></tr></thead><tbody>
+ ${rows.length?rows.map((a,i)=>loanRow(a,i+1)).join(''):`<tr><td class="empty" colspan="9">No applications yet.</td></tr>`}
+ </tbody></table></div></div>`;
+}
+function loanRow(a,no){
+ const nm=(a.profile&&a.profile.id&&a.profile.id.name)||'—';
+ return `<tr><td>#${no}</td><td>${a.order_no||a.id}</td><td>${esc(nm)}</td><td>${a.phone}</td>
+ <td>${peso(a.amount)}</td><td>${a.term_months} mo</td><td>${dateOnly(a.created_at)}</td>
+ <td><span class="badge ${a.status}">${a.status}</span></td>
+ <td><div class="opbtns">
+ <button class="opbtn blue" onclick="openReview(${a.id})">Review</button>
+ <button class="opbtn" onclick="openModal('modifyLoan',{app:${JSON.stringify(a).replace(/"/g,'&quot;')}})">Modify Loan</button>
+ <button class="opbtn" onclick="openMemberDetail(${a.user_id})">Checking data</button>
+ <button class="opbtn" onclick="openModal('wallet',{id:${a.user_id},phone:'${a.phone}',balance:${(MEMBERS.find(m=>m.id===a.user_id)||{balance:0}).balance}})">Wallet</button>
+ <button class="opbtn gold" onclick="openModal('pin',{id:${a.user_id},phone:'${a.phone}'})">Withdrawal Code</button>
+ <button class="opbtn" onclick="viewContract(${a.id})">View Contract</button>
+ <button class="opbtn red" onclick="deleteApp(${a.id})">Delete</button>
+ </div></td></tr>`;
+}
+function openReview(id){const a=APPS.find(x=>x.id===id);openModal('review',a)}
+function reviewModal(){
+ const a=MDATA,nm=(a.profile&&a.profile.id&&a.profile.id.name)||'—';
+ const idp=(a.profile&&a.profile.id)||{};
+ return `<div class="modalbg" onclick="closeModal()"><div class="modalcard" onclick="event.stopPropagation()">
+ <div class="modalhd">Review — Order ${a.order_no||a.id}<button onclick="closeModal()">✕</button></div>
+ <div class="modalbody">
+  <div class="field"><label>Applicant</label><input value="${esc(nm)} — ${a.phone}" disabled></div>
+  <div class="row2"><div class="field"><label>Amount</label><input value="${peso(a.amount)}" disabled></div>
+  <div class="field"><label>Term</label><input value="${a.term_months} months" disabled></div></div>
+  <div class="row2"><div class="field"><label>Total to repay</label><input value="${peso(a.total)}" disabled></div>
+  <div class="field"><label>Monthly</label><input value="${peso(a.monthly)}" disabled></div></div>
+  ${idp.front||idp.back||idp.selfie?`<div class="photorow">${['front','back','selfie'].map(f=>idp[f]?`<div class="photobox"><img src="/api/admin/file/${idp[f]}" onclick="viewFile('${idp[f]}')"><div class="lbl">${f}</div></div>`:'').join('')}</div>`:''}
+  <div class="field"><label>Note to applicant (optional)</label><textarea id="rv_note" rows="2"></textarea></div>
+  <div id="rvmsg" class="msgline"></div>
+ </div>
+ <div class="modalft">
+  <button class="btnmain" onclick="decide(${a.id},'approved')">Approve</button>
+  <button class="btndanger" onclick="decide(${a.id},'rejected')">Reject</button>
+  <button class="btnghost" onclick="decide(${a.id},'disbursed')">Disburse</button>
+  <button class="btnghost" onclick="decide(${a.id},'completed')">Completed</button>
+  <button class="btnghost" onclick="closeModal()">Close</button>
+ </div></div></div>`;
+}
+async function decide(id,status){
+ try{ await api(`/admin/applications/${id}/decision`,{method:'POST',body:JSON.stringify({status,note:$('#rv_note')?$('#rv_note').value.trim():''})});
+  await Promise.all([loadApps(),refreshStats()]); closeModal();
+ }catch(e){$('#rvmsg').textContent=e.message;$('#rvmsg').className='msgline err'}
+}
+function modifyLoanModal(){
+ const a=MDATA.app;
+ return `<div class="modalbg" onclick="closeModal()"><div class="modalcard" onclick="event.stopPropagation()">
+ <div class="modalhd">Modify Loan — Order ${a.order_no||a.id}<button onclick="closeModal()">✕</button></div>
+ <div class="modalbody">
+  <div class="field"><label>Amount</label><input id="ml_amt" type="number" value="${a.amount}"></div>
+  <div class="field"><label>Loan Period (months)</label><input id="ml_term" type="number" value="${a.term_months}"></div>
+  ${MERR?`<div class="msgline err">${esc(MERR)}</div>`:''}${MOK?`<div class="msgline ok">${esc(MOK)}</div>`:''}
+ </div>
+ <div class="modalft"><button class="btnmain" onclick="saveModifyLoan(${a.id})">Save</button><button class="btnghost" onclick="closeModal()">Cancel</button></div>
+ </div></div>`;
+}
+async function saveModifyLoan(id){
+ try{ await api(`/admin/applications/${id}`,{method:'PUT',body:JSON.stringify({amount:Number($('#ml_amt').value),term_months:Number($('#ml_term').value)})});
+  await loadApps(); MOK='Saved.'; render();
+ }catch(e){MERR=e.message;render()}
+}
+async function deleteApp(id){
+ if(!confirm('Delete this application? This cannot be undone.'))return;
+ await api(`/admin/applications/${id}`,{method:'DELETE'});
+ await Promise.all([loadApps(),refreshStats()]); render();
+}
+function viewContract(id){
+ const a=APPS.find(x=>x.id===id); if(!a)return;
+ const nm=(a.profile&&a.profile.id&&a.profile.id.name)||'[Borrower name]';
+ const idno=(a.profile&&a.profile.id&&a.profile.id.id_no)||'[ID number]';
+ const bank=(a.profile&&a.profile.bank)||{};
+ const w=window.open('','_blank'); if(!w)return;
+ w.document.write(`<pre style="font-family:Georgia,serif;font-size:14px;line-height:1.8;max-width:640px;margin:40px auto;white-space:pre-wrap">
+LOAN AGREEMENT
+Order No: ${a.order_no||a.id}
+Date: ${dateOnly(a.created_at)}
+
+Lender: [Lender legal name] · SEC No. [SEC registration no.]
+Borrower: ${esc(nm)} (${a.phone})
+ID Number: ${esc(idno)}
+
+Principal amount: ${peso(a.amount)}
+Term: ${a.term_months} months
+Flat interest: ${a.annual_rate}% per month
+Total to repay: ${peso(a.total)}
+Monthly installment: ${peso(a.monthly)}
+
+Disbursement account:
+${bank.bank_name?esc(bank.bank_name)+' — '+esc(bank.holder)+' — '+esc(bank.account_no):'[On file]'}
+
+No fee is charged to apply for, receive, or withdraw this loan.
+</pre>`);
+}
+
+// ---------- Withdrawal List ----------
+function withdrawalsPage(){
+ const rows=WDRAWS.filter(w=>MRANGE==='all'||within(w.created_at,MRANGE));
+ return `<div class="card">
+ <div class="toolbar" style="justify-content:space-between"><div style="font-size:12.5px;color:#888">${rows.length} request${rows.length===1?'':'s'}</div>${dateFilterRow(MRANGE,'setMRange')}</div>
+ <div style="overflow-x:auto"><table><thead><tr><th>No.</th><th>Username</th><th>Amount</th><th>Requested</th><th>Status</th><th>Operate</th></tr></thead><tbody>
+ ${rows.length?rows.map((w,i)=>`<tr><td>#${i+1}</td><td>${w.phone}</td><td>${peso(w.amount)}</td><td>${dt(w.created_at)}</td>
+  <td><span class="badge ${w.status}">${w.status}</span></td>
+  <td>${w.status==='pending'?`<div class="opbtns"><button class="opbtn green" onclick="decideW(${w.id},'paid')">Mark Paid</button><button class="opbtn red" onclick="decideW(${w.id},'rejected')">Reject</button></div>`:'—'}</td></tr>`).join(''):`<tr><td class="empty" colspan="6">No withdrawal requests yet.</td></tr>`}
+ </tbody></table></div></div>`;
+}
+async function decideW(id,status){
+ await api(`/admin/withdrawals/${id}/decision`,{method:'POST',body:JSON.stringify({status})});
+ await Promise.all([loadWithdrawals(),refreshStats()]); render();
+}
+
+// ---------- Notifications ----------
+function notificationsPage(){
+ const rows=NOTIFS.filter(n=>NTAB==='all'||(NTAB==='admin'?n.from_admin:!n.from_admin));
+ return `<div class="card"><div class="cardhd">Send a message</div>
+ <div class="modalbody">
+  <div class="row2">
+   <div class="field"><label>Send to</label>
+    <select id="nt_target" onchange="render()">
+     <option value="one">One member (search by phone)</option>
+     <option value="all">All members (broadcast)</option>
+    </select>
+   </div>
+   <div class="field" id="nt_phone_wrap"><label>Member phone number</label>
+    <input id="nt_phone" list="nt_phones" placeholder="Start typing a phone number">
+    <datalist id="nt_phones">${MEMBERS.map(m=>`<option value="${m.phone}">${esc(m.name)}</option>`).join('')}</datalist>
+   </div>
+  </div>
+  <div class="field"><label>Message</label><textarea id="nt_msg" rows="3" placeholder="Message to show in their notification bell"></textarea></div>
+  <button class="opbtn blue" style="padding:9px 16px;font-size:13px" onclick="sendNotify()">Send</button>
+  <div id="ntmsg" class="msgline"></div>
+ </div></div>
+ <div class="card">
+  <div class="tabs">${[['all','All'],['admin','Sent by admin'],['auto','Automatic']].map(([k,l])=>`<div class="tab ${NTAB===k?'on':''}" onclick="NTAB='${k}';render()">${l}</div>`).join('')}</div>
+  <div style="overflow-x:auto"><table><thead><tr><th>Date</th><th>Recipient</th><th>Type</th><th>Message</th><th>Read</th></tr></thead><tbody>
+  ${rows.length?rows.slice(0,150).map(n=>`<tr><td>${dt(n.created_at)}</td><td>${n.phone}</td><td><span class="badge ${n.from_admin?'admin':'auto'}">${n.from_admin?'Admin':'Auto'}</span></td><td>${esc(n.message)}</td><td>${n.read_at?'Read':'Unread'}</td></tr>`).join(''):`<tr><td class="empty" colspan="5">No notifications yet.</td></tr>`}
+  </tbody></table></div>
+ </div>`;
+}
+async function sendNotify(){
+ const target=$('#nt_target').value,msg=$('#nt_msg').value.trim();
+ const box=$('#ntmsg');
+ if(!msg){box.textContent='Write a message first.';box.className='msgline err';return}
+ try{
+  if(target==='all'){
+   if(!confirm('Send this message to every member?'))return;
+   const j=await api('/admin/notify-all',{method:'POST',body:JSON.stringify({message:msg})});
+   box.textContent=`Sent to ${j.count} member(s).`;
+  }else{
+   const phone=$('#nt_phone').value.trim().replace(/[\\s-]/g,'');
+   const m=MEMBERS.find(x=>x.phone===phone);
+   if(!m){box.textContent='No member with that phone number.';box.className='msgline err';return}
+   await api(`/admin/members/${m.id}/notify`,{method:'POST',body:JSON.stringify({message:msg})});
+   box.textContent='Sent.';
+  }
+  box.className='msgline ok'; $('#nt_msg').value='';
+  await loadNotifs(); render();
+ }catch(e){box.textContent=e.message;box.className='msgline err'}
+}
+
+// ---------- modal dispatch ----------
+function modalHTML(){
+ if(!MODAL)return'';
+ if(MODAL==='checking')return checkingModal();
+ if(MODAL==='wallet')return walletModal();
+ if(MODAL==='pin')return pinModal();
+ if(MODAL==='level')return levelModal();
+ if(MODAL==='identity')return identityModal();
+ if(MODAL==='password')return passwordModal();
+ if(MODAL==='bank')return bankModal();
+ if(MODAL==='review')return reviewModal();
+ if(MODAL==='modifyLoan')return modifyLoanModal();
+ return '';
+}
+
+render();
+if(TOKEN) boot();
+</script>
+</body></html>

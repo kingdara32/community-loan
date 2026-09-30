@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Community Loan</title>
+<style>
+:root{--r1:#5a0a12;--r2:#9b0d14;--gold:#f2b84b;--bg:#f4f4f8;--ink:#1f2937;--mute:#6b7280;--g:linear-gradient(135deg,var(--r1),var(--r2))}
+*{box-sizing:border-box}body{margin:0;background:#ddd;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+#app{max-width:480px;min-height:100vh;margin:auto;background:var(--bg);position:relative;padding-bottom:88px}
+.hd{background:var(--g);color:#fff;padding:18px 16px;text-align:center;font-weight:700;letter-spacing:.04em;position:relative}
+.hd .back{position:absolute;left:14px;top:50%;transform:translateY(-50%);background:none;border:0;color:#fff;font-size:22px}
+.wrap{padding:16px}.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px #0001}
+.tabs{display:flex;justify-content:center;gap:36px;padding-top:6px}.tabs button{background:none;border:0;color:#ffffffaa;font:700 16px inherit;padding:10px 0;border-bottom:3px solid transparent}
+.tabs .on{color:#fff;border-color:var(--gold)}
+input,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:6px;font:inherit;margin:6px 0 12px;background:#fff}
+label{font-size:13px;color:var(--mute)}
+.btn{display:block;width:100%;padding:14px;border:0;border-radius:10px;background:var(--r2);color:#fff;font:700 16px inherit;cursor:pointer;margin-top:8px}
+.btn.alt{background:#fff;color:var(--r2);border:2px solid var(--gold)}.btn.gold{background:#eea86a;border-radius:99px;width:auto;padding:14px 44px}
+.btn:disabled{opacity:.5}
+.err{color:#b91c1c;font-size:14px;min-height:20px}.ok{color:#15803d}
+.hero{background:var(--g);color:#fff;text-align:center;padding:44px 24px;border-radius:0 0 18px 18px;font-size:20px;font-weight:600;line-height:1.4}
+.row{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;border-bottom:1px solid #eee;cursor:pointer}.row:last-child{border:0}
+.tag{font-size:12px;font-weight:700;padding:5px 10px;border-radius:8px;background:#fde8d8;color:#9b1c1c}.tag.done{background:#dcfce7;color:#166534}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--g);display:flex;gap:8px;padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px))}
+nav button{flex:1;background:#fff;border:2px solid transparent;border-radius:12px;padding:10px 0;font:600 13px inherit;color:#333}nav .on{color:var(--r2);border-color:var(--r2)}
+.faq b{display:block;margin-bottom:6px;font-size:15px}.faq p{margin:0;color:var(--mute);font-size:14px;line-height:1.5}
+.big{font-size:30px;font-weight:700}.mute{color:var(--mute);font-size:13px}
+canvas{width:100%;height:260px;background:#e5e7eb;border:2px dashed #9ca3af;touch-action:none;border-radius:4px}
+.contract{font-size:14px;line-height:1.6}.contract h4{margin:14px 0 4px}
+.status{display:inline-block;padding:6px 14px;border-radius:99px;font-weight:700;font-size:13px}
+.s-pending{background:#fef3c7;color:#92400e}.s-approved,.s-disbursed{background:#dcfce7;color:#166534}.s-rejected{background:#fee2e2;color:#991b1b}
+.hero2{position:relative;overflow:hidden;background:var(--g);color:#fff;text-align:center;padding:56px 26px 64px;border-radius:0 0 18px 18px}
+.hero2 p{position:relative;z-index:1;margin:0 0 22px;font-size:19px;font-weight:600;line-height:1.45}.hero2 .btn{position:relative;z-index:1;margin:auto;font-size:18px;letter-spacing:.05em}
+.hero2 .c1,.hero2 .c2{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffffff14,#ffffff05);border:1px solid #ffffff1f}
+.hero2 .c1{width:420px;height:420px;right:-150px;top:-70px}.hero2 .c2{width:320px;height:320px;right:-110px;top:20px}
+.hero2 .bar{position:absolute;left:20px;bottom:12px;width:170px;height:2px;background:#fffc}
+.grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:118px 118px 220px;gap:3px}
+.t{position:relative;overflow:hidden;border-radius:10px;background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:10px;color:#fff;font-weight:700;font-size:14px;box-shadow:0 1px 4px #0001}
+.t::before{content:"";position:absolute;inset:0;background:linear-gradient(to top,#3c0008b8,#3c000800 55%)}.t span{position:relative;text-shadow:0 1px 3px #0008}
+.t1{background-image:url(img/home-1.jpg),url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjIgMTE4IiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCBzbGljZSI+PHJlY3Qgd2lkdGg9IjIyMiIgaGVpZ2h0PSIxMTgiIGZpbGw9IiNmM2QzYzgiLz48Y2lyY2xlIGN4PSIxODUiIGN5PSIyMCIgcj0iNDYiIGZpbGw9IiNmZmZmZmYzMyIvPgo8cmVjdCB4PSI1MCIgeT0iNTYiIHdpZHRoPSIxNiIgaGVpZ2h0PSIyNiIgcng9IjMiIGZpbGw9IiM5YjBkMTQiIG9wYWNpdHk9Ii41NSIvPjxyZWN0IHg9IjcyIiB5PSI0MiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjQwIiByeD0iMyIgZmlsbD0iIzliMGQxNCIgb3BhY2l0eT0iLjc1Ii8+PHJlY3QgeD0iOTQiIHk9IjI2IiB3aWR0aD0iMTYiIGhlaWdodD0iNTYiIHJ4PSIzIiBmaWxsPSIjOWIwZDE0Ii8+CjxwYXRoIGQ9Ik00OCA1MCBMNzggMzYgTDk4IDIwIiBzdHJva2U9IiNmMmI4NGIiIHN0cm9rZS13aWR0aD0iNCIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBhdGggZD0iTTkwIDE4IEwxMDEgMTggTDk5IDI5IiBzdHJva2U9IiNmMmI4NGIiIHN0cm9rZS13aWR0aD0iNCIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxyZWN0IHg9IjEzNCIgeT0iMzgiIHdpZHRoPSI3NiIgaGVpZ2h0PSI1MiIgcng9IjgiIGZpbGw9IiM3YTBjMTQiLz48cmVjdCB4PSIxNTkiIHk9IjI3IiB3aWR0aD0iMjYiIGhlaWdodD0iMTQiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM3YTBjMTQiIHN0cm9rZS13aWR0aD0iNSIvPgo8cmVjdCB4PSIxMzQiIHk9IjU4IiB3aWR0aD0iNzYiIGhlaWdodD0iNCIgZmlsbD0iIzVhMGExMiIvPjxyZWN0IHg9IjE2NiIgeT0iNTQiIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgcng9IjIiIGZpbGw9IiNmMmI4NGIiLz48L3N2Zz4=)}.t2{background-image:url(img/home-2.jpg),url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjIgMTE4IiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCBzbGljZSI+PHJlY3Qgd2lkdGg9IjIyMiIgaGVpZ2h0PSIxMTgiIGZpbGw9IiNmNmUzYjQiLz48Y2lyY2xlIGN4PSI0MCIgY3k9IjIwIiByPSI0MCIgZmlsbD0iI2ZmZmZmZjQwIi8+CjxjaXJjbGUgY3g9Ijg2IiBjeT0iNTAiIHI9IjMwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiM5YjBkMTQiIHN0cm9rZS13aWR0aD0iNiIvPjxwYXRoIGQ9Ik04NiAzMCBWNTAgTDEwMCA1OCIgc3Ryb2tlPSIjN2EwYzE0IiBzdHJva2Utd2lkdGg9IjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8cmVjdCB4PSIxNDAiIHk9IjEyIiB3aWR0aD0iNjYiIGhlaWdodD0iODgiIHJ4PSI4IiBmaWxsPSIjZmZmIiBzdHJva2U9IiNiODg5MmIiIHN0cm9rZS13aWR0aD0iMyIvPjxyZWN0IHg9IjE2MCIgeT0iNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjE0IiByeD0iNSIgZmlsbD0iI2YyYjg0YiIvPgo8Y2lyY2xlIGN4PSIxNTUiIGN5PSI0MCIgcj0iNiIgZmlsbD0iIzNmOWE1YSIvPjxwYXRoIGQ9Ik0xNTIgNDAgbDIuNSAzIGw1LTYiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIi8+PHJlY3QgeD0iMTY2IiB5PSIzNyIgd2lkdGg9IjMyIiBoZWlnaHQ9IjYiIHJ4PSIzIiBmaWxsPSIjZDFkNWRiIi8+CjxjaXJjbGUgY3g9IjE1NSIgY3k9IjYyIiByPSI2IiBmaWxsPSIjM2Y5YTVhIi8+PHBhdGggZD0iTTE1MiA2MiBsMi41IDMgbDUtNiIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz48cmVjdCB4PSIxNjYiIHk9IjU5IiB3aWR0aD0iMjYiIGhlaWdodD0iNiIgcng9IjMiIGZpbGw9IiNkMWQ1ZGIiLz4KPGNpcmNsZSBjeD0iMTU1IiBjeT0iODQiIHI9IjYiIGZpbGw9IiMzZjlhNWEiLz48cGF0aCBkPSJNMTUyIDg0IGwyLjUgMyBsNS02IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIvPjxyZWN0IHg9IjE2NiIgeT0iODEiIHdpZHRoPSIzMCIgaGVpZ2h0PSI2IiByeD0iMyIgZmlsbD0iI2QxZDVkYiIvPjwvc3ZnPg==)}
+.t3{grid-column:2;grid-row:1/3;background-image:url(img/home-3.jpg),url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjIgMjM5IiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCBzbGljZSI+PHJlY3Qgd2lkdGg9IjIyMiIgaGVpZ2h0PSIyMzkiIGZpbGw9IiNlNmNmY2QiLz48Y2lyY2xlIGN4PSIxNzAiIGN5PSI0MCIgcj0iNjAiIGZpbGw9IiNmZmZmZmYzMyIvPgo8cGF0aCBkPSJNNTYgMTEyIGEyNCAyNiAwIDAgMSA0OCAwIHoiIGZpbGw9IiMyYjIzMjAiLz48Y2lyY2xlIGN4PSI4MCIgY3k9IjExNCIgcj0iMjEiIGZpbGw9IiNjOThiNjMiLz48cGF0aCBkPSJNNTggMTA2IGEyMyAyMiAwIDAgMSA0NCAwIHEtMjIgLTEwIC00NCAweiIgZmlsbD0iIzJiMjMyMCIvPgo8Y2lyY2xlIGN4PSI3MyIgY3k9IjExNCIgcj0iMi4yIiBmaWxsPSIjMmIyMzIwIi8+PGNpcmNsZSBjeD0iODciIGN5PSIxMTQiIHI9IjIuMiIgZmlsbD0iIzJiMjMyMCIvPjxwYXRoIGQ9Ik03MyAxMjMgcTcgNiAxNCAwIiBzdHJva2U9IiM3YTNmMjIiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxyZWN0IHg9IjUyIiB5PSIxMzgiIHdpZHRoPSI1NiIgaGVpZ2h0PSI3MCIgcng9IjIyIiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIxNTAiIGN5PSIxMDgiIHJ4PSIyNiIgcnk9IjMwIiBmaWxsPSIjMmIyMzIwIi8+PGNpcmNsZSBjeD0iMTUwIiBjeT0iMTEwIiByPSIyMCIgZmlsbD0iI2U4YjQ4YSIvPjxwYXRoIGQ9Ik0xMzAgMTA0IGEyMCAyMCAwIDAgMSA0MCAwIHEtMjAgLTggLTQwIDB6IiBmaWxsPSIjMmIyMzIwIi8+CjxjaXJjbGUgY3g9IjE0NCIgY3k9IjExMCIgcj0iMi4yIiBmaWxsPSIjMmIyMzIwIi8+PGNpcmNsZSBjeD0iMTU2IiBjeT0iMTEwIiByPSIyLjIiIGZpbGw9IiMyYjIzMjAiLz48cGF0aCBkPSJNMTQ0IDExOSBxNiA1IDEyIDAiIHN0cm9rZT0iI2E1NTgzYSIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHJlY3QgeD0iMTI0IiB5PSIxMzQiIHdpZHRoPSI1OCIgaGVpZ2h0PSI3NiIgcng9IjIyIiBmaWxsPSIjNGY5ZDYyIi8+CjxwYXRoIGQ9Ik04OCAxNzAgaDUwIGw2IDI4IGgtNjJ6IiBmaWxsPSIjY2ZkNWRmIiBzdHJva2U9IiM4YTkzYTMiIHN0cm9rZS13aWR0aD0iMiIvPjxyZWN0IHg9IjgyIiB5PSIxOTgiIHdpZHRoPSI2NiIgaGVpZ2h0PSI2IiByeD0iMyIgZmlsbD0iIzhhOTNhMyIvPgo8cmVjdCB4PSIwIiB5PSIyMDQiIHdpZHRoPSIyMjIiIGhlaWdodD0iMzUiIGZpbGw9IiNlOWQzYjMiLz48L3N2Zz4=)}.t4{grid-column:1/3;background-image:url(img/home-4.jpg),url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggMTcwIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCBzbGljZSI+PHJlY3Qgd2lkdGg9IjQ0OCIgaGVpZ2h0PSIxNzAiIGZpbGw9IiNkNWU0Y2YiLz48Y2lyY2xlIGN4PSI0MDAiIGN5PSIyMCIgcj0iODAiIGZpbGw9IiNmZmZmZmYzMyIvPjxyZWN0IHg9IjAiIHk9IjEzOCIgd2lkdGg9IjQ0OCIgaGVpZ2h0PSIzMiIgZmlsbD0iI2MzZDhiYiIvPgo8cmVjdCB4PSIxNTgiIHk9Ijc2IiB3aWR0aD0iNjYiIGhlaWdodD0iNzAiIHJ4PSIxMiIgZmlsbD0iI2ZmZiIgZmlsbC1vcGFjaXR5PSIuNyIgc3Ryb2tlPSIjN2Q5YThmIiBzdHJva2Utd2lkdGg9IjMiLz48cmVjdCB4PSIxNjYiIHk9IjY2IiB3aWR0aD0iNTAiIGhlaWdodD0iMTIiIHJ4PSI0IiBmaWxsPSIjOWFhOWEwIi8+CjxlbGxpcHNlIGN4PSIxOTEiIGN5PSIxMzQiIHJ4PSIyNCIgcnk9IjciIGZpbGw9IiNmMmI4NGIiLz48ZWxsaXBzZSBjeD0iMTkxIiBjeT0iMTIyIiByeD0iMjQiIHJ5PSI3IiBmaWxsPSIjZjdjYjZiIi8+PGVsbGlwc2UgY3g9IjE5MSIgY3k9IjExMCIgcng9IjI0IiByeT0iNyIgZmlsbD0iI2YyYjg0YiIvPjxlbGxpcHNlIGN4PSIxOTEiIGN5PSI5OCIgcng9IjIyIiByeT0iNiIgZmlsbD0iI2Y3Y2I2YiIvPgo8cGF0aCBkPSJNMTkxIDc2IFYzOCIgc3Ryb2tlPSIjM2Y4YTRlIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOTEgNTIgQzE3MCA1MCAxNjAgMzYgMTYyIDI0IEMxODAgMjQgMTkyIDM2IDE5MSA1MnoiIGZpbGw9IiM0ZmE1NjEiLz48cGF0aCBkPSJNMTkxIDQ0IEMyMTAgNDIgMjIyIDMwIDIyMCAxOCBDMjAyIDE4IDE5MCAzMCAxOTEgNDR6IiBmaWxsPSIjNjZiODc3Ii8+CjxwYXRoIGQ9Ik0yNjIgOTIgTDMxOCA0NiBMMzc0IDkyeiIgZmlsbD0iIzZiN2E4ZCIvPjxyZWN0IHg9IjI3NCIgeT0iOTAiIHdpZHRoPSI4OCIgaGVpZ2h0PSI1NiIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjOWFhNWI4IiBzdHJva2Utd2lkdGg9IjIiLz4KPHJlY3QgeD0iMzA0IiB5PSIxMDgiIHdpZHRoPSIyNCIgaGVpZ2h0PSIzOCIgcng9IjMiIGZpbGw9IiM4YTRiMmEiLz48cmVjdCB4PSIyODIiIHk9IjEwMiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjY2ZlM2Y1Ii8+PHJlY3QgeD0iMzM4IiB5PSIxMDIiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iI2NmZTNmNSIvPjxyZWN0IHg9IjMzNiIgeT0iNTgiIHdpZHRoPSIxMiIgaGVpZ2h0PSIyMiIgZmlsbD0iIzZiN2E4ZCIvPgo8Y2lyY2xlIGN4PSI0MDUiIGN5PSIxMTIiIHI9IjE2IiBmaWxsPSIjZjJiODRiIi8+PHRleHQgeD0iNDA1IiB5PSIxMTgiIGZvbnQtc2l6ZT0iMTciIGZvbnQtd2VpZ2h0PSI3MDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiIGZvbnQtZmFtaWx5PSJBcmlhbCI+4oKxPC90ZXh0Pjwvc3ZnPg==)}
+.t1{grid-column:1;grid-row:1}.t2{grid-column:1;grid-row:2}
+.tagline{text-align:center;color:#9aa5b8;font-weight:600;font-size:13px;margin:18px 0 8px}
+.ring{width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 40% 30%,#b3121b,#7a0c14);border:3px solid #ffffff66;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none}.ring b{font-size:28px}.ring small{font-size:11px;opacity:.85}
+.pill{flex:1;background:#ffffff26;border-radius:10px;padding:14px;text-align:center;font-weight:700;cursor:pointer}
+.ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:18px}
+.ni{font-size:18px;line-height:1.3}nav button{line-height:1.2}
+.rowsw{background:#fff}.kv{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px;border-bottom:1px solid #f0f0f0;background:#fff}
+.kv label{color:#333;font-size:16px;flex:none;width:40%}.kv input{border:0;margin:0;text-align:right;padding:18px 0;color:#444;font-size:15px;outline:0;background:transparent}
+.sh{background:var(--g);color:#fff;text-align:center;padding:15px;font-size:16px}
+.consent{display:flex;gap:10px;align-items:flex-start;padding:16px;font-size:13px;color:#4b5563;line-height:1.5}.consent input{width:auto;margin:3px 0}
+.submitbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:5}.submitbar button{width:100%;height:58px;border:0;background:var(--r2);color:#fff;font:400 21px inherit;letter-spacing:.12em;cursor:pointer}.submitbar button:disabled{opacity:.6}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:14px}.tile{position:relative;display:block;aspect-ratio:1.6;border:2px solid #e5e7eb;border-radius:8px;overflow:hidden;cursor:pointer;background:#f8fafc}.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .ok2{position:absolute;right:6px;top:6px;background:#16a34a;color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
+.nofee{background:#eafaf0;color:#166534;border:1px solid #bbf0cf;border-radius:10px;padding:9px 12px;font-size:12.5px;text-align:center;font-weight:700;margin-bottom:12px}
+.wlist .row{padding:12px 4px}
+.loanhero{position:relative;height:170px;background-size:cover;background-position:center;border-radius:0 0 14px 14px;overflow:hidden}
+.loanhero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,#00000090,#00000010 60%)}
+.lh-badge{position:absolute;left:16px;bottom:44px;background:#fff;color:#1d4ed8;font-weight:800;font-size:13px;padding:8px 14px;border-radius:99px;z-index:1;box-shadow:0 2px 6px #0003}
+.lh-bubble{position:absolute;right:14px;top:16px;background:#fff;color:#111;font-weight:800;font-size:14px;line-height:1.25;padding:10px 14px;border-radius:14px 14px 4px 14px;max-width:60%;z-index:1;box-shadow:0 2px 6px #0003}
+.amtbig{width:100%;text-align:center;border:2px solid #eecfa8;background:#fffaf1;outline:0;border-radius:10px;padding:8px 0;font-size:32px;font-weight:800;color:#7a0c14;font-family:Georgia,serif;-moz-appearance:textfield}.amtbig:focus{border-color:#9b0d14}.amtbig::-webkit-outer-spin-button,.amtbig::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}.amthint{font-size:11px;color:#b08a4e;margin-top:4px}
+.stat3{display:flex;background:#fff;border-radius:14px;box-shadow:0 1px 4px #0001;margin:14px 0;overflow:hidden}
+.stat3>div{flex:1;text-align:center;padding:14px 4px;border-right:1px solid #eee}.stat3>div:last-child{border:0}
+.stat3 b{font-size:15px;color:#1f2937}.stat3 span{font-size:11px}
+input[type=range]{width:100%;accent-color:#9b0d14;margin:10px 0}
+.termrow{display:flex;flex-wrap:wrap;gap:8px}
+.termbtn{flex:1;min-width:30%;padding:11px 0;border:1px solid #9b0d14;border-radius:8px;background:#fff;color:#9b0d14;font:700 13px inherit;cursor:pointer}
+.termbtn.on{background:#9b0d14;color:#fff}
+
+.stbadge{display:inline-block;background:var(--r2);color:#fff;font-weight:700;font-size:11px;letter-spacing:.03em;padding:6px 12px;border-radius:8px}
+.stbadge.rej{background:#6b7280}
+.stbadge.done{background:#16a34a}
+.latest{display:inline-block;margin-top:6px;background:#fde8d8;color:var(--r2);font-weight:700;font-size:12px;padding:5px 12px;border-radius:99px}
+.descbox{border:1px dashed #cbd5e1;border-radius:8px;padding:12px;color:#6b7280;font-size:13px;min-height:20px;background:#fafafa}
+.kvline{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:13.5px}.kvline:last-of-type{border:0}
+.steps{display:flex;align-items:flex-start;margin:14px 0 4px}
+.step{display:flex;flex-direction:column;align-items:center;flex:none;width:60px}
+.step .dot{width:26px;height:26px;border-radius:50%;background:#fff3;border:2px solid #fff8;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700}
+.step.done .dot{background:#f2b84b;border-color:#f2b84b;color:#5a0a12}
+.step .lbl{font-size:11px;color:inherit;margin-top:6px;text-align:center;opacity:.9}
+.line{flex:1;height:2px;background:#fff5;margin-top:13px}.line.done{background:#f2b84b}
+.timelinebox{background:var(--g);color:#fff;border-radius:12px;padding:14px}
+.timelinebox .steps .dot{color:#fff}
+.repicon{width:36px;height:36px;border-radius:10px;background:#e8f2fb;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.modalbg{position:fixed;inset:0;background:#00000066;display:flex;align-items:center;justify-content:center;z-index:20;padding:20px}
+.modalcard{background:#fff;border-radius:14px;width:100%;max-width:340px;overflow:hidden}
+.modalhd{display:flex;justify-content:space-between;align-items:center;padding:16px;font-weight:700;border-bottom:1px solid #eee}
+.modalhd button{background:none;border:0;font-size:16px;cursor:pointer;color:#888}
+.modalbody{padding:16px}.modalbody input{margin:0 0 10px;background:#f2f3f5;border:1px solid #f2f3f5;border-radius:10px;padding:14px}
+.modalft{display:flex;border-top:1px solid #eee}.modalft button{flex:1;padding:14px;border:0;background:#fff;font:700 14px inherit;cursor:pointer}.modalft button:first-child{border-right:1px solid #eee;color:#888}
+
+.bellwrap{position:absolute;top:14px;right:14px;z-index:15}
+.bellbtn{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#f7cb6b,#d9971f);border:2px solid #fff;box-shadow:0 2px 6px #0004;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.bellbadge{position:absolute;top:-3px;right:-3px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #fff}
+.notifitem{padding:13px 4px;border-bottom:1px solid #f0f0f0}.notifitem:last-child{border:0}
+.notifoverlay{position:absolute;inset:0;min-height:100%;background:#00000055;z-index:25;display:flex;justify-content:flex-end}
+.notifpanel{width:86%;max-width:340px;height:100%;background:#f2f2f5;display:flex;flex-direction:column;box-shadow:-6px 0 20px #0003;animation:slideInR .26s ease-out}
+@keyframes slideInR{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.notifpanel .nfhd{padding:calc(14px + env(safe-area-inset-top,0px)) 16px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:17px;background:#f2f2f5}
+.notifpanel .nfhd button{background:#e2e2e7;border:0;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;color:#555;line-height:1}
+.notifpanel .nflist{flex:1;overflow-y:auto;padding:0 12px 16px}
+.nfcard{background:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px #0001}
+.nfcard .nfhead{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.nfcard .nficon{width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,#f7cb6b,#d9971f);flex:none}
+.nfcard .nfapp{font-size:11px;font-weight:700;color:#8a8a8e;letter-spacing:.02em;flex:1;text-transform:uppercase}
+.nfcard .nftime{font-size:11px;color:#8a8a8e}
+.nfcard .nfmsg{font-size:14px;color:#1c1c1e;line-height:1.4}
+.notifitem .when{font-size:11px;color:#9ca3af;margin-top:3px}
+small.foot{display:block;text-align:center;color:#9ca3af;padding:6px 16px 0;font-size:12px}
+a{color:var(--r2)}
+</style></head><body><div id="app"></div>
+<script>
+const LS=(()=>{const m={};try{localStorage.setItem('__t','1');localStorage.removeItem('__t');return localStorage}catch{return{getItem:k=>m[k]??null,setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}}}})();
+const $=(s,r=document)=>r.querySelector(s);
+let PH='',T=LS.getItem('t'),ME=null,view='home',sub=null,tab='login',msg='';
+const peso=n=>'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+async function api(path,opt={}){
+  const h={...(opt.headers||{})};if(T)h.Authorization='Bearer '+T;
+  if(opt.body&&!(opt.body instanceof FormData)){h['Content-Type']='application/json';opt.body=JSON.stringify(opt.body)}
+  let r;try{r=await fetch('/api'+path,{...opt,headers:h})}catch{throw new Error('Cannot reach the server. Start it with npm start and open http://localhost:3000')}
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401&&T){T=null;LS.removeItem('t');render()}
+  if(!r.ok)throw new Error(j.error||'Something went wrong.');return j;
+}
+const DEMO=false;
+async function load(){ME=await api('/me');try{const n=await api('/notifications');NOTIFS=n.items;NOTIF_UNREAD=n.unread}catch{}}
+function go(v,s=null){view=v;sub=s;msg='';render()}
+const done=k=>ME?.profile?.[k]?'<span class="tag done">COMPLETE</span>':'<span class="tag">INCOMPLETE</span>';
+const bar=(t,back)=>`<div class="hd">${back?`<button class="back" onclick="go('${back}')">‹</button>`:''}${t}</div>`;
+const foot=()=>`<small class="foot">${ME.config.lender} · SEC No. ${ME.config.sec}</small>`;
+const navb=()=>{const tab={home:'home',loan:'home',wallet:'wallet',contact:'contact'}[view]||'account';return `<nav>${[['home','🏠','Home'],['wallet','₱','Wallet'],['contact','💬','Contact'],['account','👤','Account']].map(([k,i,l])=>`<button class="${tab===k?'on':''}" onclick="go('${k}')"><span class="ni">${i}</span><br>${l}</button>`).join('')}</nav>`};
+
+async function render(){
+  const A=$('#app');
+  if(!T){return A.innerHTML=authView()}
+  if(!ME)try{await load()}catch{return A.innerHTML=authView()}
+  const V={home,loan,wallet,contact,account,settings,repay,profile,contract,id:fID,personal:fPersonal,bank:fBank,signature:fSig}[view]||home;
+  A.innerHTML=V()+(['id','personal','bank','signature'].includes(view)?'':navb()+bellHTML())+modalHTML();
+  if(view==='signature')initSig();
+  if(view==='loan')calc();
+}
+function authView(){
+  const reg=tab==='register';
+  return `<div class="hd" style="padding:34px 16px 0">Apply with us, apply with confidence.<div class="tabs"><button class="${!reg?'on':''}" onclick="tab='login';msg='';render()">Login</button><button class="${reg?'on':''}" onclick="tab='register';msg='';render()">Register</button></div></div>
+  <div class="wrap"><label>Mobile number</label><input id="ph" inputmode="tel" placeholder="Enter your phone number" autocomplete="username" value="${PH}">
+  <label>${reg?'Set your password':'Password'}</label><input id="pw" type="password" autocomplete="${reg?'new-password':'current-password'}">
+  ${reg?`<label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink)"><input id="cs" type="checkbox" style="width:auto;margin:4px 0"> <span>I have read and agree to the <a href="#" onclick="event.preventDefault();alert('Add your Privacy Notice and Terms here. State what data you collect, why, who sees it, how long you keep it, and how to request deletion (Data Privacy Act of 2012).')">Privacy Notice and Terms</a>.</span></label>`:''}
+  <div class="err ${msg.startsWith('Account created')?'ok':''}">${msg}</div><button class="btn" onclick="auth(${reg})">${reg?'Create account':'Log in'}</button>
+  <button class="btn alt" onclick="tab='${reg?'login':'register'}';msg='';render()">${reg?'Back to login':'Register'}</button></div>`;
+}
+async function auth(reg){
+  try{const r=await api(reg?'/register':'/login',{method:'POST',body:{phone:$('#ph').value.replace(/[\s-]/g,''),password:$('#pw').value,consent:reg?$('#cs').checked:undefined}});
+    if(reg){PH=$('#ph').value.replace(/[\s-]/g,'');tab='login';msg='Account created. Please log in.';render();return}
+    T=r.token;LS.setItem('t',T);ME=null;view='home';PH='';render()}catch(e){PH=$('#ph').value;msg=e.message;render()}
+}
+function logout(){T=null;ME=null;LS.removeItem('t');tab='login';render()}
+
+function home(){return `<div class="hero2"><div class="c1"></div><div class="c2"></div><p>Solve your financial problems and increase your business with us with an ease !!!</p><button class="btn gold" onclick="go('loan')">Apply Now</button><i class="bar"></i></div>
+ <div class="wrap" style="padding-top:14px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div><div class="grid"><div class="t t1"><span>Business loans</span></div><div class="t t2"><span>Friendly support</span></div><div class="t t3"><span>Family needs</span></div><div class="t t4"><span>Home &amp; savings</span></div></div>
+ <p class="tagline">Apply with us apply with confidence.</p>
+ <p class="mute" style="text-align:center;line-height:1.5">No fees before you receive your loan. Never send money to anyone to release or approve a loan.</p></div>${foot()}`}
+
+
+function statusLabel(s){return {pending:'UNDER REVIEW',approved:'APPROVED',disbursed:'DISBURSED',completed:'COMPLETED',rejected:'REJECTED'}[s]||String(s).toUpperCase()}
+function statusDesc(a){if(!a)return'';return {pending:'Your application is being reviewed. We will notify you once a decision is made.',approved:'Your loan is approved and will be sent to your bank account on file shortly.',disbursed:'Your loan has been sent to your bank account on file.',completed:'This loan has been fully repaid. Thank you.',rejected:'Your application was not approved this time.'}[a.status]||''}
+function stepFill(a){return {pending:1,approved:2,disbursed:3,completed:3}[a?a.status:'']||0}
+function stepper(fill,labels){return `<div class="steps">${labels.map((l,i)=>`<div class="step ${i<fill?'done':''}"><span class="dot">${i<fill?'✓':''}</span><span class="lbl">${l}</span></div>${i<labels.length-1?`<div class="line ${i<fill-1?'done':''}"></div>`:''}`).join('')}</div>`}
+function fmtDate(x){try{return new Date(String(x||'').replace(' ','T')).toLocaleDateString('en-PH',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return''}}
+function walletLoanCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">No: ${a.order_no||'—'}</span><span class="stbadge ${a.status==='rejected'?'rej':a.status==='completed'?'done':''}">${statusLabel(a.status)}</span></div>
+ <div class="stat3" style="margin:12px 0"><div><b>${a.annual_rate}%</b><br><span class="mute">Interest/Mo</span></div><div><b>${a.term_months}</b><br><span class="mute">Months</span></div><div><b>${peso(a.amount)}</b><br><span class="mute">Principal</span></div></div>
+ ${a.status!=='rejected'?stepper(stepFill(a),['Submit Loan','Approve','Receive Money']):''}
+ <p style="margin:16px 0 4px"><b>Status Description</b></p><div class="descbox">${a.note||statusDesc(a)}</div>
+ <p style="margin:16px 0 4px"><b>Loan Details</b></p>
+ <div class="kvline"><span class="mute">Order number</span><b>${a.order_no||'—'}</b></div>
+ <div class="kvline"><span class="mute">Loan amount</span><b>${peso(a.amount)}</b></div>
+ <div class="kvline"><span class="mute">Borrowing Time</span><b>${a.term_months} Months</b></div>
+ <div class="kvline"><span class="mute">Repayment per installment</span><b>${peso(a.monthly)}</b></div>
+ <button class="btn" style="background:#f2b84b;color:#5a0a12;margin-top:14px" onclick="go('contract')">View Contract</button></div>`}
+function loanPageCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">Order: ${a.order_no||'—'}</span><span class="stbadge ${a.status==='rejected'?'rej':a.status==='completed'?'done':''}">${statusLabel(a.status)}</span></div>
+ <div class="stat3" style="margin:12px 0"><div><b>${a.annual_rate}%</b><br><span class="mute">Interest/Mo</span></div><div><b>${a.term_months}</b><br><span class="mute">Months</span></div><div><b>${peso(a.amount)}</b><br><span class="mute">Amount</span></div></div>
+ <div style="display:flex;gap:10px"><button class="btn" style="background:#f2b84b;color:#5a0a12;flex:1" onclick="go('contract')">View Contract</button><button class="btn" style="background:#d99a3b;color:#fff;flex:1" onclick="openModal('loanDetails')">Loan Details</button></div>${DEMO&&a.status==='pending'?`<button class="btn alt" style="margin-top:10px" onclick="demoApprove()">Demo: approve this application</button>`:''}${DEMO&&a.status==='approved'?`<button class="btn alt" style="margin-top:10px" onclick="demoDisburse()">Demo: mark as disbursed (sent to bank)</button>`:''}</div>`}
+let MODAL=null;function openModal(n){MODAL=n;render()}function closeModal(){MODAL=null;render()}
+function modalHTML(){if(!MODAL)return'';
+ if(MODAL==='loanDetails'){const a=ME.applications[0];if(!a)return'';
+  return `<div class="modalbg" onclick="closeModal()"><div class="modalcard" onclick="event.stopPropagation()"><div class="modalhd">Loan Application<button onclick="closeModal()">✕</button></div>
+  <div class="modalbody"><p style="margin-top:0"><b>Loan Progress Timeline</b></p>
+  <div class="timelinebox"><div style="display:flex;justify-content:space-between;font-size:12px;opacity:.85"><span>No: ${a.order_no||'—'}</span><span>${fmtDate(a.created_at)}</span></div>${a.status!=='rejected'?stepper(stepFill(a),['Submit','Approve','Disburse']):`<p style="margin:10px 0 0">This application was not approved.</p>`}</div>
+  <p style="margin-top:16px"><b>Status Description</b></p><div class="descbox">${a.note||statusDesc(a)}</div>
+  <p style="margin-top:16px"><b>Loan Details</b></p>
+  <div class="kvline"><span class="mute">Order number</span><b>${a.order_no||'—'}</b></div>
+  <div class="kvline"><span class="mute">Principal amount</span><b>${peso(a.amount)}</b></div>
+  <div class="kvline"><span class="mute">Borrowing tenure</span><b>${a.term_months} Months</b></div>
+  <div class="kvline"><span class="mute">Monthly installment</span><b>${peso(a.monthly)}</b></div></div></div></div>`}
+ if(MODAL==='withdraw'){
+  return `<div class="modalbg" onclick="closeModal()"><div class="modalcard" onclick="event.stopPropagation()"><div class="modalhd" style="justify-content:center">Wallet withdrawal</div>
+  <div class="modalbody"><input id="mwa" type="number" placeholder="Enter the withdrawal amount">
+  <input id="mwc" type="password" inputmode="numeric" placeholder="Enter withdrawal code">
+  <div class="err" id="mwerr"></div></div>
+  <div class="modalft"><button onclick="closeModal()">Cancel</button><button style="color:var(--r2)" onclick="doWithdraw()">Submit</button></div></div></div>`}
+ if(MODAL==='notifications'){return `<div class="notifoverlay" onclick="closeModal()"><div class="notifpanel" onclick="event.stopPropagation()">
+  <div class="nfhd">Notifications<button onclick="closeModal()">✕</button></div>
+  <div class="nflist">${NOTIFS.length?NOTIFS.map(n=>`<div class="nfcard"><div class="nfhead"><span class="nficon"></span><span class="nfapp">Assistant Support</span><span class="nftime">${timeAgo(n.created_at)}</span></div><div class="nfmsg">${n.message}</div></div>`).join(''):'<p class="mute" style="margin:16px 4px">No notifications yet.</p>'}</div></div></div>`}
+ return ''}
+async function doWithdraw(){try{await api('/withdraw',{method:'POST',body:{amount:$('#mwa').value,pin:$('#mwc').value}});closeModal();await load();go('wallet')}catch(e){$('#mwerr').textContent=e.message}}
+
+let NOTIFS=[],NOTIF_UNREAD=0;
+function bellHTML(){if(!ME)return'';return `<div class="bellwrap"><button class="bellbtn" onclick="openNotifs()">🔔${NOTIF_UNREAD>0?`<span class="bellbadge">${NOTIF_UNREAD>9?'9+':NOTIF_UNREAD}</span>`:''}</button></div>`}
+async function openNotifs(){openModal('notifications');if(NOTIF_UNREAD>0){NOTIF_UNREAD=0;try{await api('/notifications/read',{method:'POST',body:{}})}catch{}}}
+function timeAgo(iso){const t=new Date(String(iso||'').replace(' ','T'));const s=Math.max(0,(Date.now()-t.getTime())/1000);
+ if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return t.toLocaleDateString('en-PH',{day:'2-digit',month:'short'})}
+function loan(){
+  const p=['id','personal','bank','signature'].every(k=>ME.profile[k]),a=ME.applications[0],c=ME.config;
+  let h=bar('My loan','account');
+  if(a){h+=`<div class="wrap" style="padding-top:14px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div>${loanPageCard(a)}</div>`}
+  if(!a||a.status==='rejected'){
+    h+=p?loanForm(c):`<div class="wrap" style="padding-top:14px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div><div class="card"><p>Complete your profile before applying.</p><button class="btn" onclick="go('profile')">Complete profile</button></div></div>`;
+  }
+  return h+foot();
+}
+function loanForm(c){LT=LT&&c.terms.includes(LT)?LT:c.terms[0];
+ return `<div class="loanhero" style="background-image:url(img/home-1.jpg)"><div class="lh-bubble">GET A LOAN<br>TODAY</div><div class="lh-badge">APPLY FOR A LOAN NOW</div></div>
+ <div class="wrap" style="padding-top:14px"><div class="card" style="text-align:center"><input id="amBig" class="amtbig" type="number" inputmode="numeric" step="1000" value="${c.min}" oninput="typeAmt()" onblur="typeAmtDone()"><div class="mute" style="margin-top:6px">Loan Interest (${c.rate}%)</div></div>
+ <div class="stat3"><div><b id="statAmt"></b><br><span class="mute">Loan Amount</span></div><div><b id="statPay"></b><br><span class="mute">Repayment per installment</span></div><div><b id="statTerm"></b><br><span class="mute">Borrowing Time (months)</span></div></div>
+ <div class="card"><label>Loan Amount</label><input id="am" type="range" min="${c.min}" max="${c.max}" step="1000" value="${c.min}" oninput="onSlide()">
+ <div class="mute" style="display:flex;justify-content:space-between"><span>${peso(c.min)}</span><span>${peso(c.max)}</span></div></div>
+ <div class="card"><label>Borrowing Time</label><div class="termrow">${c.terms.map(t=>`<button type="button" class="termbtn" data-t="${t}" onclick="pickTerm(${t})">${t} Months</button>`).join('')}</div></div>
+ <div class="err" id="lerr">${msg}</div><button class="btn" style="border-radius:99px;font-size:18px" onclick="apply()">Apply Now</button></div>`}
+let LT=null;
+function pickTerm(t){LT=t;calc()}
+function calc(){if(!$('#am'))return;const amt=+$('#am').value,c=ME.config;if(!c.terms.includes(LT))LT=c.terms[0];
+ const tot=amt*(1+c.rate/100*LT),pay=tot/LT;
+ $('#statAmt').textContent=peso(amt);$('#statPay').textContent=peso(Math.round(pay));$('#statTerm').textContent=LT;
+ document.querySelectorAll('.termbtn').forEach(b=>b.classList.toggle('on',+b.dataset.t===LT))}
+function onSlide(){const v=+$('#am').value;if($('#amBig'))$('#amBig').value=v;calc()}
+function typeAmt(){const c=ME.config;const n=Math.round(+$('#amBig').value);const v=isNaN(n)?c.min:Math.max(c.min,Math.min(c.max,n));if($('#am'))$('#am').value=v;calc()}
+function typeAmtDone(){const c=ME.config;const n=Math.round(+$('#amBig').value);const v=isNaN(n)?c.min:Math.max(c.min,Math.min(c.max,n));if($('#amBig'))$('#amBig').value=v;if($('#am'))$('#am').value=v;calc()}
+async function apply(){try{await api('/apply',{method:'POST',body:{amount:$('#am').value,term:LT}});await load();go('loan')}catch(e){msg=e.message;render()}}
+function demoApprove(){}
+function demoDisburse(){}
+
+
+const AV='<svg viewBox="0 0 48 48" width="46" height="46"><circle cx="24" cy="24" r="23" fill="#c9d3d9" stroke="#ffffff88" stroke-width="2"/><circle cx="24" cy="19" r="8" fill="#fff"/><path d="M8 42c2-10 10-13 16-13s14 3 16 13z" fill="#fff"/></svg>';
+function wallet(){const a=ME.applications[0],bal=ME.balance||0,pend=(ME.withdrawals||[]).find(w=>w.status==='pending'),withdrawn=(ME.withdrawals||[]).filter(w=>w.status==='paid').reduce((t,w)=>t+w.amount,0);
+ return `<div class="wrap" style="padding-top:16px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div>
+ <div class="card" style="background:var(--g);color:#fff;display:flex;gap:14px;align-items:center;padding:14px">${AV}<div><b style="font-size:18px">Account</b><div style="font-size:13px;opacity:.85">${ME.phone}</div></div></div>
+ <div class="card" style="text-align:center;padding:26px 16px"><div class="mute" style="letter-spacing:.06em">ACCOUNT BALANCE</div><div class="big" style="font-family:Georgia,serif;margin:8px 0">${peso(bal)}</div>${a?`<span class="latest">Latest Loan: ${peso(a.amount)}</span>`:''}</div>
+ <div style="display:flex;gap:12px"><div class="card" style="flex:1"><div class="mute">Withdrawal (₱)</div><b>${peso(withdrawn)}</b></div><div class="card" style="flex:1"><div class="mute">Wallet (₱)</div><b>${peso(bal)}</b></div></div>
+ <button class="btn" onclick="openModal('withdraw')">Withdrawal</button>
+ ${pend?`<div class="card" style="margin-top:14px"><p class="mute">You have a pending request for ${peso(pend.amount)}.</p></div>`:''}
+ ${a?walletLoanCard(a):`<div class="card"><p style="margin:0 0 10px">No loan yet. Apply to see your progress here.</p><button class="btn" onclick="go('loan')">Apply for a loan</button></div>`}
+ ${(ME.withdrawals||[]).length?`<div class="card wlist"><b style="padding:0 4px">Withdrawal history</b>${ME.withdrawals.map(w=>`<div class="row" style="cursor:default"><span>${peso(w.amount)}</span><span class="status s-${w.status==='paid'?'approved':w.status==='rejected'?'rejected':'pending'}">${w.status.toUpperCase()}</span></div>`).join('')}</div>`:''}
+ </div>${foot()}`}
+function openSupport(){const u=ME.config.support;if(u)window.open(u,'_blank');else alert('This button opens your live chat (WhatsApp, Messenger or Telegram). Set SUPPORT_URL in the real app.')}
+function contact(){const q=[['1. What are the loan terms?','Complete your profile (valid ID, personal info, bank account and signature), then choose an amount and term. You need a valid ID and a bank account under your own name. There is no fee to apply or to receive your loan.'],
+['2. How long does it take to apply?','Registering and completing your profile takes a few minutes. We aim to review applications within 1 business day. Contact customer service for more specific information.'],
+['3. How do I check my loan?','Open Account, then My Loan. It shows whether your application is pending, approved, released or declined, with the amount, monthly payment and total to repay.'],
+['4. How do I repay?','Your monthly payment and due dates are in your contract and under My Repayment. Payment instructions are provided when your loan is released. Late charges, if any, are stated in the contract.'],
+['5. How can I contact the service?','Tap Online Service above during service hours ('+ME.config.hours+').'],
+['6. Can I delete my account?','Yes. Contact customer service and we will process your request under the Data Privacy Act.']];
+ return bar('Contact us')+`<div class="wrap" style="padding-top:12px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div><div class="card" style="text-align:center"><div style="width:58px;height:58px;border-radius:50%;background:#fff;box-shadow:0 1px 6px #0002;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:30px">🎧</div><button class="btn" style="margin:0" onclick="openSupport()">Online Service ➤</button></div>
+ <div style="text-align:center;margin-bottom:14px"><span style="display:inline-block;background:#e8eef6;color:#1d4ed8;font-weight:700;font-size:13px;padding:8px 18px;border-radius:99px">Service time is ${ME.config.hours}</span></div>
+ <div class="card faq" style="border-left:4px solid var(--r2)"><b>How you get your money</b><p>An approved loan is sent straight to the bank account in your profile. There is no withdrawal step and no fee to receive it.</p></div>
+ ${q.map(([a,b])=>`<div class="card faq"><b>${a}</b><p>${b}</p></div>`).join('')}</div>${foot()}`}
+
+function levelGauge(level){level=Math.max(1,Math.min(5,level||1));const cx=100,cy=108,r=82,startA=180,endA=0;
+ const pol=(rad)=>{const t=rad*Math.PI/180;return[cx+r*Math.cos(t),cy-r*Math.sin(t)]};
+ const curA=startA-(level-1)/4*(startA-endA);
+ const[x1,y1]=pol(startA),[x2,y2]=pol(endA),[xc,yc]=pol(curA);
+ const track=`M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+ const prog=`M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 0 1 ${xc.toFixed(1)} ${yc.toFixed(1)}`;
+ let ticks='';for(let i=1;i<=5;i++){const a=startA-(i-1)/4*(startA-endA);
+  const pin=(rr)=>{const t=a*Math.PI/180;return[cx+rr*Math.cos(t),cy-rr*Math.sin(t)]};
+  const[tx1,ty1]=pin(r-9),[tx2,ty2]=pin(r+2),[lx,ly]=pin(r+16);
+  ticks+=`<line x1="${tx1.toFixed(1)}" y1="${ty1.toFixed(1)}" x2="${tx2.toFixed(1)}" y2="${ty2.toFixed(1)}" stroke="#fff" stroke-width="2.5" opacity=".9"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="9" fill="#fff" opacity=".9" text-anchor="middle" font-family="Arial" dominant-baseline="middle">${i}</text>`}
+ const[nx,ny]=pol(curA-0),nEnd=(()=>{const t=curA*Math.PI/180;return[cx+(r-14)*Math.cos(t),cy-(r-14)*Math.sin(t)]})();
+ return `<svg viewBox="0 0 200 140" width="118" height="82" style="overflow:visible">
+ <path d="${track}" fill="none" stroke="#ffffff55" stroke-width="9" stroke-linecap="round"/>
+ <path d="${prog}" fill="none" stroke="#f2b84b" stroke-width="9" stroke-linecap="round"/>
+ ${ticks}
+ <line x1="${cx}" y1="${cy}" x2="${nEnd[0].toFixed(1)}" y2="${nEnd[1].toFixed(1)}" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+ <circle cx="${cx}" cy="${cy}" r="5" fill="#fff"/>
+ <text x="${cx}" y="${cy-26}" font-size="26" font-weight="800" fill="#fff" text-anchor="middle" font-family="Georgia,serif">Lv ${level}</text>
+ <text x="${cx}" y="${cy-8}" font-size="10" fill="#ffffffbb" text-anchor="middle" font-family="Arial">of 5</text>
+ </svg>`}
+function account(){const lvl=ME.level||1;
+ const rows=[['profile','📁','#64748b','My Profile'],['contract','📝','#3b82f6','My Contract'],['loan','💰','#f59e0b','My Loan'],['repay','🤝','#0ea5e9','My Repayment']];
+ return `<div class="hd" style="text-align:left;padding:22px 20px;border-radius:0 0 22px 22px"><div style="text-align:center;margin-bottom:16px">Personal Center</div>
+ <div style="display:flex;gap:14px;align-items:center"><div style="flex:none">${levelGauge(lvl)}</div><div><div style="font-size:20px;font-weight:700">Account number</div><div style="font-size:20px;font-family:Georgia,serif;margin-top:6px">${ME.phone}</div></div></div>
+ <div style="display:flex;gap:14px;margin-top:18px"><div class="pill" onclick="go('wallet')">₱ My wallet</div><div class="pill" onclick="go('settings')">⚙️ Settings</div></div></div>
+ <div class="wrap"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div><div class="card" style="padding:4px 16px">${rows.map(([k,e,c,l])=>`<div class="row" onclick="go('${k}')"><span style="display:flex;align-items:center;gap:14px"><i class="ic" style="background:${c}22;color:${c}">${e}</i><b>${l}</b></span><span>›</span></div>`).join('')}</div></div>${foot()}`}
+
+function settings(){return bar('Settings','account')+`<div class="wrap"><div class="card"><p class="mute" style="margin:0">Phone number</p><b>${ME.phone}</b><p class="mute" style="margin:14px 0 0">Lender</p><b>${ME.config.lender}</b><br><span class="mute">SEC No. ${ME.config.sec}</span></div><div class="card"><p class="mute" style="margin:0">Withdrawal code</p><b>${ME.hasPin?'Set by our team':'Not set yet'}</b><p class="mute" style="margin:8px 0 0">${ME.hasPin?'Check your notifications 🔔 for the code, or contact support if you need it reset.':'Only our team can set this. Contact support, then check your notifications 🔔 for the code.'}</p></div><button class="btn" onclick="logout()">Log out</button></div>`}
+
+function repay(){const a=ME.applications[0],live=a&&['approved','disbursed'].includes(a.status);
+ if(!live)return bar('My Repayment Period','account')+`<div class="wrap"><div class="card">Your repayment schedule appears here after your loan is approved.</div></div>`;
+ const base=a.status==='disbursed'&&a.decided_at?new Date(String(a.decided_at).replace(' ','T')+'Z'):null;
+ const interestPer=+((a.total-a.amount)/a.term_months).toFixed(2),principalPer=+(a.amount/a.term_months).toFixed(2);
+ const rows=Array.from({length:a.term_months},(_,i)=>{let d='Date set when the loan is released';if(base){const x=new Date(base);x.setMonth(x.getMonth()+i+1);d=x.toLocaleDateString('en-PH',{day:'2-digit',month:'short',year:'numeric'})}
+  return `<div class="card" style="display:flex;gap:12px"><div class="repicon">🤝</div><div style="flex:1"><b>${d}</b>
+   <div class="kvline"><span class="mute">Interest (${a.annual_rate}%)</span><span>${peso(interestPer)}</span></div>
+   <div class="kvline"><span class="mute">Principal</span><span>${peso(principalPer)}</span></div>
+   <div class="kvline"><span class="mute">Repayment Amount</span><b style="color:var(--r2)">${peso(a.monthly)}</b></div></div></div>`}).join('');
+ return bar('My Repayment Period','account')+`<div class="wrap" style="padding-top:10px">${rows}</div>`}
+function profile(){return bar('My profile','account')+`<div class="wrap"><div class="card" style="background:var(--g);color:#fff">Complete the information to apply for a loan</div>
+ <div class="card">${[['id','Valid ID'],['personal','Personal info'],['bank','Bank account'],['signature','Signature']].map(([k,l])=>`<div class="row" onclick="go('${k}')"><b>${l}</b>${done(k)}<span>›</span></div>`).join('')}</div>
+ <div class="err" id="perr"></div><button class="btn" onclick="submitProfile()">Submit</button></div>`}
+function submitProfile(){if(['id','personal','bank','signature'].every(k=>ME.profile[k]))go('loan');else $('#perr').textContent='Please complete all four steps first.'}
+
+const field=(id,l,v='',t='text')=>`<label>${l}</label><input id="${id}" type="${t}" value="${(v||'').replace(/"/g,'&quot;')}">`;
+async function save(section,body){try{await api('/profile/'+section,{method:'PUT',body});await load();go('profile')}catch(e){msg=e.message;render()}}
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const uri=s=>'data:image/svg+xml;utf8,'+encodeURIComponent(s);
+const ART={
+ front:uri('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200" fill="#dbeafe"/><path d="M0 150 L320 60 L320 100 L0 190z" fill="#c7d2fe" opacity=".6"/><text x="160" y="28" font-size="13" font-weight="700" text-anchor="middle" font-family="Arial">Identification Card ( Front Card )</text><rect x="26" y="48" width="62" height="74" rx="4" fill="#fff"/><circle cx="57" cy="76" r="15" fill="#1f2937"/><path d="M34 122 c2-22 40-22 46 0z" fill="#3b5b8c"/><rect x="108" y="56" width="120" height="6" rx="3" fill="#fff"/><rect x="108" y="76" width="140" height="6" rx="3" fill="#fff"/><rect x="108" y="96" width="110" height="6" rx="3" fill="#fff"/><rect x="26" y="150" width="270" height="5" rx="2" fill="#fff"/></svg>'),
+ back:uri('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200" fill="#dbeafe"/><path d="M0 170 L200 80 L320 120 L320 200 L0 200z" fill="#c7d2fe" opacity=".5"/><text x="160" y="28" font-size="13" font-weight="700" text-anchor="middle" font-family="Arial">Identification Card ( Back Card )</text><rect x="26" y="52" width="110" height="5" rx="2" fill="#fff"/><rect x="26" y="70" width="110" height="5" rx="2" fill="#fff"/><rect x="26" y="88" width="90" height="5" rx="2" fill="#fff"/><rect x="200" y="46" width="84" height="84" fill="#fff"/><g fill="#111"><rect x="206" y="52" width="24" height="24"/><rect x="254" y="52" width="24" height="24"/><rect x="206" y="100" width="24" height="24"/><rect x="238" y="84" width="10" height="10"/><rect x="256" y="96" width="14" height="14"/><rect x="238" y="108" width="10" height="14"/></g><g fill="#111"><rect x="200" y="146" width="3" height="28"/><rect x="207" y="146" width="6" height="28"/><rect x="217" y="146" width="3" height="28"/><rect x="224" y="146" width="8" height="28"/><rect x="236" y="146" width="3" height="28"/><rect x="243" y="146" width="6" height="28"/><rect x="253" y="146" width="3" height="28"/><rect x="260" y="146" width="8" height="28"/><rect x="272" y="146" width="3" height="28"/></g></svg>'),
+ selfie:uri('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200" fill="#fff"/><text x="200" y="32" font-size="13" font-weight="700" text-anchor="middle" font-family="Arial">Hold ID Card</text><path d="M40 200 c2-46 30-62 66-62 s64 16 66 62z" fill="#d2b06b"/><circle cx="106" cy="86" r="32" fill="#f2c9a5"/><path d="M74 80 c4-34 60-38 64 0 c-14-14-50-14-64 0z" fill="#4a3324"/><circle cx="96" cy="88" r="3" fill="#333"/><circle cx="116" cy="88" r="3" fill="#333"/><path d="M96 102 q10 9 20 0" stroke="#a5583a" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M150 160 C170 140 190 110 204 90" stroke="#f2c9a5" stroke-width="16" fill="none" stroke-linecap="round"/><rect x="180" y="58" width="96" height="60" rx="6" fill="#dbeafe" stroke="#93b4e6" stroke-width="2"/><rect x="188" y="68" width="24" height="30" fill="#fff"/><rect x="220" y="72" width="46" height="5" rx="2" fill="#fff"/><rect x="220" y="86" width="40" height="5" rx="2" fill="#fff"/></svg>')};
+const TILES=[['front','front'],['back','back'],['selfie','selfie']];
+function prev(k){const f=$('#u_'+k).files[0];if(f)$('#im_'+k).src=URL.createObjectURL(f)}
+function fID(){const d=ME.profile.id||{};
+ return bar('Valid ID','profile')+`<div class="rowsw"><div class="kv"><input id="f_name" style="width:100%;text-align:left" placeholder="Name" value="${esc(d.name)}"></div><div class="kv"><input id="f_no" style="width:100%;text-align:left" placeholder="ID No." value="${esc(d.id_no)}"></div></div>
+ <div class="wrap"><h3 style="margin:8px 0 14px">ID Pictures</h3><div class="tiles">${TILES.map(([k])=>`<label class="tile"><img id="im_${k}" src="${ART[k]}" alt=""><input type="file" accept="image/jpeg,image/png" id="u_${k}" hidden onchange="prev('${k}')">${d[k]?'<span class="ok2">Uploaded</span>':''}</label>`).join('')}</div>
+ <h3 style="line-height:1.45;margin-top:34px">The photo must be clear and the ID number can be seen clearly</h3><div class="err" id="err"></div></div>
+ <div class="submitbar"><button id="sv" onclick="saveID()">Submit</button></div>`}
+async function up(k,old){const f=$('#u_'+k).files[0];if(!f)return old||'';const fd=new FormData();fd.append('file',f);return (await api('/upload',{method:'POST',body:fd})).file}
+async function saveID(){const d=ME.profile.id||{},err=m=>{$('#err').textContent=m};err('');$('#sv').disabled=true;
+ try{const name=$('#f_name').value.trim(),no=$('#f_no').value.trim();if(!name||!no)throw Error('Please enter your name and ID number.');
+  const front=await up('front',d.front),back=await up('back',d.back),selfie=await up('selfie',d.selfie);
+  if(!front||!back||!selfie)throw Error('Please add all three photos.');
+  await api('/profile/id',{method:'PUT',body:{name,id_no:no,front,back,selfie}});await load();go('profile')}catch(e){err(e.message);$('#sv').disabled=false}}
+const kv=(id,l,v,ph,t='text')=>`<div class="kv"><label>${l}</label><input id="${id}" type="${t}" placeholder="${ph}" value="${esc(v)}"></div>`;
+function fPersonal(){const d=ME.profile.personal||{};
+ return bar('Personal Info','profile')+`<div class="rowsw">${kv('p_c','Company Name',d.company,'Enter company name')}${kv('p_p','Position',d.position,'Enter your position')}${kv('p_s','Salary',d.salary,'0','number')}${kv('p_h','Family address',d.home_address,'Family address')}${kv('p_a','Current address',d.current_address,'Enter current address')}</div>
+ <div class="sh">Family Contact</div><div class="rowsw">${kv('p_fn','Name',d.family_name,'Enter name')}${kv('p_fr','Relationship',d.family_rel,'Relationship')}${kv('p_fp','Contact',d.family_phone,'Enter phone number','tel')}</div>
+ <div class="sh">Emergency Contact</div><div class="rowsw">${kv('p_en','Name',d.emerg_name,'Enter name')}${kv('p_er','Relationship',d.emerg_rel,'Relationship')}${kv('p_ep','Contact',d.emerg_phone,'Enter phone number','tel')}</div>
+ <label class="consent"><input type="checkbox" id="p_ok" ${d.contacts_ok?'checked':''}><span>I confirm the people listed above agreed to be my contacts. The lender may contact them only to verify my application or to reach me if I cannot be reached, and will not share my loan details or pressure them.</span></label><div class="err" id="err" style="padding:0 16px 80px"></div>
+ <div class="submitbar"><button id="sv" onclick="savePersonal()">Submit</button></div>`}
+async function savePersonal(){const g=i=>$('#'+i).value.trim();
+ const body={company:g('p_c'),position:g('p_p'),salary:g('p_s'),home_address:g('p_h'),current_address:g('p_a'),family_name:g('p_fn'),family_rel:g('p_fr'),family_phone:g('p_fp'),emerg_name:g('p_en'),emerg_rel:g('p_er'),emerg_phone:g('p_ep'),contacts_ok:$('#p_ok').checked?'yes':''};
+ try{if(!body.contacts_ok)throw Error('Please confirm your contacts agreed to be listed.');await api('/profile/personal',{method:'PUT',body});await load();go('profile')}catch(e){$('#err').textContent=e.message}}
+function fBank(){const d=ME.profile.bank||{};return bar('Bank account','profile')+`<div class="wrap">${field('b_n','Bank name',d.bank_name)}${field('b_h','Account holder name',d.holder)}${field('b_a','Account number',d.account_no)}
+ <p class="mute"><b>The bank account must be under your name.</b></p><div class="err">${msg}</div><button class="btn" onclick="save('bank',{bank_name:$('#b_n').value,holder:$('#b_h').value,account_no:$('#b_a').value})">Save</button></div>`}
+function fSig(){return bar('Handwritten signature','profile')+`<div class="wrap"><div class="card"><canvas id="cv"></canvas><p class="mute" style="text-align:center">Sign inside the box.</p><button class="btn" style="background:#977626;width:auto;padding:10px 30px;margin:auto" onclick="initSig()">Clear</button></div>
+ <div class="err">${msg}</div><button class="btn" onclick="saveSig()">Save signature</button></div>`}
+let drew=false;function initSig(){const c=$('#cv'),r=c.getBoundingClientRect(),x=c.getContext('2d');c.width=r.width;c.height=r.height;x.lineWidth=2.5;x.lineCap='round';x.strokeStyle='#111';drew=false;let on=false;
+ const p=e=>{const b=c.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top]};
+ c.onpointerdown=e=>{on=true;drew=true;const[a,b]=p(e);x.beginPath();x.moveTo(a,b);c.setPointerCapture(e.pointerId)};
+ c.onpointermove=e=>{if(!on)return;const[a,b]=p(e);x.lineTo(a,b);x.stroke()};c.onpointerup=()=>on=false}
+function saveSig(){if(!drew){msg='Please sign in the box.';return render()}save('signature',{image:$('#cv').toDataURL('image/png')})}
+
+function contract(){const a=ME.applications[0],d=ME.profile,c=ME.config;
+ if(!a)return bar('My contract','account')+`<div class="wrap"><div class="card">Your contract appears here after you submit a loan application.</div></div>`;
+ return bar('My contract','account')+`<div class="wrap"><div class="card contract"><b>LOAN AGREEMENT</b><p>
+ Order number: ${a.order_no||'—'}<br>Lender: ${c.lender} (SEC No. ${c.sec})<br>Borrower: ${d.id?.name||''}<br>ID number: ${d.id?.id_no||''}<br>Mobile: ${ME.phone}<br>
+ Loan amount: ${peso(a.amount)}<br>Term: ${a.term_months} months<br>Interest: ${a.annual_rate}% per month, flat<br>Repayment per installment: ${peso(a.monthly)}<br>Total to repay: ${peso(a.total)}<br>Disbursed to: ${d.bank?.bank_name||''} ${d.bank?d.bank.account_no.slice(-4).padStart(d.bank.account_no.length,'•'):''}</p>
+ <h4>1. No upfront fees</h4><p>The Lender does not charge any fee, deposit or payment before the loan is released to the Borrower's bank account.</p>
+ <h4>2. Repayment</h4><p>The Borrower repays the total amount above in equal monthly payments.</p>
+ <h4>3. Late payment</h4><p>[Lawyer to insert late-payment charge, if any, within the limits set by law.]</p>
+ <h4>4. Data privacy</h4><p>The Lender uses the Borrower's data only to assess and service this loan, as described in the Privacy Notice.</p>
+ <h4>5. Other terms</h4><p>[Lawyer to insert early repayment, default, governing law and dispute terms.]</p>
+ ${d.signature?`<p class="mute">Borrower signature</p><img src="${d.signature.image}" style="max-width:220px;border-bottom:1px solid #999">`:''}</div></div>`}
+render();
+</script></body></html>
