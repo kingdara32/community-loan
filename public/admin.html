@@ -93,7 +93,7 @@ tr:hover td{background:#fafbfc}
 const $=s=>document.querySelector(s);
 let TOKEN=localStorage.getItem('admin_token')||'';
 let PAGE='dashboard',STATS={members:0,pendingLoans:0,pendingWithdrawals:0,totalLoans:0};
-let MEMBERS=[],APPS=[],WDRAWS=[],NOTIFS=[],LOGINERR='';
+let MEMBERS=[],APPS=[],WDRAWS=[],NOTIFS=[],ADMINS=[],LOGINERR='';
 let Q='',NQ='',NTAB='all';
 let MODAL=null,MDATA=null,MERR='',MOK='';
 
@@ -105,18 +105,22 @@ async function api(path,opt={}){
 }
 async function tryLogin(){
  LOGINERR='';
- const t=$('#logintok').value.trim();
- if(!t){LOGINERR='Enter the admin token.';render();return}
- TOKEN=t;
- try{ await api('/admin/stats'); localStorage.setItem('admin_token',TOKEN); await boot(); }
- catch(e){ TOKEN=''; LOGINERR='Wrong token, or the server rejected it.'; render(); }
+ const username=$('#loginuser').value.trim();
+ const password=$('#loginpass').value;
+ if(!username||!password){LOGINERR='Enter your username and password.';render();return}
+ try{
+  const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+  const j=await r.json();
+  if(!r.ok) throw new Error(j.error||'Login failed.');
+  TOKEN=j.token; localStorage.setItem('admin_token',TOKEN); await boot();
+ }catch(e){ TOKEN=''; LOGINERR=e.message||'Wrong username or password.'; render(); }
 }
 function logout(){TOKEN='';localStorage.removeItem('admin_token');render()}
 
 async function boot(){
  try{
   STATS=await api('/admin/stats');
-  await Promise.all([loadMembers(),loadApps(),loadWithdrawals(),loadNotifs()]);
+  await Promise.all([loadMembers(),loadApps(),loadWithdrawals(),loadNotifs(),loadAdmins()]);
  }catch(e){ TOKEN=''; localStorage.removeItem('admin_token'); }
  render();
 }
@@ -124,6 +128,7 @@ async function loadMembers(){MEMBERS=await api('/admin/members'+(Q?'?q='+encodeU
 async function loadApps(){APPS=await api('/admin/applications')}
 async function loadWithdrawals(){WDRAWS=await api('/admin/withdrawals')}
 async function loadNotifs(){NOTIFS=await api('/admin/notifications')}
+async function loadAdmins(){ADMINS=await api('/admin/admins')}
 async function refreshStats(){STATS=await api('/admin/stats')}
 
 function go(p){PAGE=p;render()}
@@ -157,19 +162,20 @@ function loginView(){
  return `<div class="loginwrap"><div class="loginbox">
  <h1>💳 Admin</h1><p>Community Loan back office</p>
  <div class="loginerr">${LOGINERR}</div>
- <input id="logintok" type="password" placeholder="Admin token" onkeydown="if(event.key==='Enter')tryLogin()">
+ <input id="loginuser" placeholder="Username" onkeydown="if(event.key==='Enter')$('#loginpass').focus()">
+ <input id="loginpass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')tryLogin()">
  <button onclick="tryLogin()">Log in</button>
  </div></div>`;
 }
 function shell(){
- const nav=[['dashboard','📊','Dashboard'],['members','👥','All Members'],['loans','💰','Borrowing List'],['withdrawals','🏧','Withdrawal List'],['notifications','🔔','Notifications']];
+ const nav=[['dashboard','📊','Dashboard'],['members','👥','All Members'],['loans','💰','Borrowing List'],['withdrawals','🏧','Withdrawal List'],['notifications','🔔','Notifications'],['staff','🔑','Admin Users']];
  return `<div class="shell">
  <div class="sidebar">
   <div class="brand">💳 <span>Community</span>Loan Admin</div>
   ${nav.map(([k,ic,l])=>`<div class="navitem ${PAGE===k?'on':''}" onclick="go('${k}')">${ic} ${l}</div>`).join('')}
  </div>
  <div class="main">
-  <div class="topbar"><b>${({dashboard:'Dashboard',members:'All Members',loans:'Borrowing List',withdrawals:'Withdrawal List',notifications:'Notifications'})[PAGE]}</b>
+  <div class="topbar"><b>${({dashboard:'Dashboard',members:'All Members',loans:'Borrowing List',withdrawals:'Withdrawal List',notifications:'Notifications',staff:'Admin Users'})[PAGE]}</b>
    <div style="display:flex;align-items:center">
     <div class="topstats">
      <div class="tchip">New Member<b>${STATS.members}</b></div>
@@ -189,6 +195,7 @@ function pageBody(){
  if(PAGE==='loans')return loansPage();
  if(PAGE==='withdrawals')return withdrawalsPage();
  if(PAGE==='notifications')return notificationsPage();
+ if(PAGE==='staff')return staffPage();
  return '';
 }
 
@@ -589,6 +596,38 @@ async function sendNotify(){
   box.className='msgline ok'; $('#nt_msg').value='';
   await loadNotifs(); render();
  }catch(e){box.textContent=e.message;box.className='msgline err'}
+}
+
+// ---------- Admin Users (staff logins) ----------
+function staffPage(){
+ return `<div class="card"><div class="cardhd">Add a staff login</div>
+ <div class="modalbody">
+  <div class="row2">
+   <div class="field"><label>Username</label><input id="st_user" placeholder="e.g. maria"></div>
+   <div class="field"><label>Password</label><input id="st_pass" type="password" placeholder="At least 6 characters"></div>
+  </div>
+  <button class="opbtn blue" style="padding:9px 16px;font-size:13px" onclick="addAdmin()">Add / Update login</button>
+  <div id="stmsg" class="msgline"></div>
+ </div></div>
+ <div class="card"><div class="cardhd">Who can log in</div>
+ <div style="overflow-x:auto"><table><thead><tr><th>Username</th><th>Added</th><th></th></tr></thead><tbody>
+ ${ADMINS.length?ADMINS.map(a=>`<tr><td>${esc(a.username)}</td><td>${dt(a.created_at)}</td><td><button class="opbtn red" onclick="deleteAdmin(${a.id})">Remove</button></td></tr>`).join(''):`<tr><td class="empty" colspan="3">No staff logins yet.</td></tr>`}
+ </tbody></table></div></div>`;
+}
+async function addAdmin(){
+ const username=$('#st_user').value.trim(),password=$('#st_pass').value;
+ const box=$('#stmsg');
+ try{
+  await api('/admin/admins',{method:'POST',body:JSON.stringify({username,password})});
+  box.textContent='Saved.';box.className='msgline ok';
+  $('#st_user').value='';$('#st_pass').value='';
+  await loadAdmins();render();
+ }catch(e){box.textContent=e.message;box.className='msgline err'}
+}
+async function deleteAdmin(id){
+ if(!confirm('Remove this login? They will no longer be able to sign in.'))return;
+ try{ await api(`/admin/admins/${id}`,{method:'DELETE'}); await loadAdmins(); render(); }
+ catch(e){ alert(e.message); }
 }
 
 // ---------- modal dispatch ----------
