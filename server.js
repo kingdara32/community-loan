@@ -39,6 +39,17 @@ try { db.exec("ALTER TABLE applications ADD COLUMN order_no TEXT"); } catch (e) 
 try { db.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'enabled'"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN level_override INTEGER"); } catch (e) {}
+db.exec(`CREATE TABLE IF NOT EXISTS admins(id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, pass_hash TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP);`);
+// Optional: set ADMIN_USER / ADMIN_PASSWORD env vars to create (or reset the password of) a staff login on boot.
+// This is how the first admin account gets in — after that, staff can add more from Admin Users in the back office.
+if (process.env.ADMIN_USER && process.env.ADMIN_PASSWORD) {
+  const uname = String(process.env.ADMIN_USER).trim().toLowerCase();
+  const hash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
+  const existing = db.prepare('SELECT id FROM admins WHERE username=?').get(uname);
+  if (existing) db.prepare('UPDATE admins SET pass_hash=? WHERE id=?').run(hash, existing.id);
+  else db.prepare('INSERT INTO admins(username, pass_hash) VALUES(?,?)').run(uname, hash);
+}
 db.exec(`CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, message TEXT NOT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP, read_at TEXT);`);
 try { db.exec("ALTER TABLE notifications ADD COLUMN from_admin INTEGER DEFAULT 0"); } catch (e) {}
@@ -62,6 +73,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }));
 app.use('/api/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 20 }));
+app.use('/api/admin/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }));
 
 const PHONE = /^\+?\d{7,15}$/;
 const norm = (p) => String(p || '').replace(/[\s-]/g, '');
@@ -82,7 +94,12 @@ function balanceOf(uid) {
 // Admin (protect with HTTPS and a strong ADMIN_TOKEN). Declared early: several customer-facing
 // routes below (e.g. the admin-only withdrawal-code route) reference it before the old "admin
 // section" location further down the file, and JS throws if a const is used before its declaration runs.
-const admin = (req, res, next) => (req.headers['x-admin-token'] === ADMIN_TOKEN ? next() : res.status(401).json({ error: 'Unauthorized' }));
+const admin = (req, res, next) => {
+  const t = req.headers['x-admin-token'];
+  if (t && t === ADMIN_TOKEN) return next(); // legacy master key, still works
+  try { if (jwt.verify(t, JWT_SECRET).admin === true) return next(); } catch (e) {}
+  res.status(401).json({ error: 'Unauthorized' });
+};
 const auth = (req, res, next) => {
   try { req.uid = jwt.verify((req.headers.authorization || '').slice(7), JWT_SECRET).uid; next(); }
   catch { res.status(401).json({ error: 'Please log in again.' }); }
@@ -174,8 +191,9 @@ app.put('/api/profile/:section', auth, (req, res) => {
     d[f] = v;
   }
   if (s === 'personal' && d.contacts_ok !== 'yes') return res.status(400).json({ error: 'Please confirm your contacts agreed to be listed.' });
-  if (s === 'bank' && d.holder.toLowerCase() !== (loadProfile(req.uid).id?.name || d.holder).toLowerCase())
-    return res.status(400).json({ error: 'The bank account must be under the same name as your ID.' });
+  // Bank account holder no longer has to match the member's own ID name — members may disburse to a
+  // relative's or another trusted person's account. The account holder name they type is still stored and
+  // shown to admin/staff as-is, so who actually owns the account stays visible on the back office.
   for (const f of ['front', 'back', 'selfie']) if (d[f] && !/^[\w-]+\.jpg$/.test(d[f])) return res.status(400).json({ error: 'Invalid file.' });
   if (s === 'signature' && !/^data:image\/png;base64,/.test(d.image)) return res.status(400).json({ error: 'Invalid signature.' });
   for (const f of SENSITIVE[s] || []) d[f] = enc(d[f]);
@@ -227,6 +245,36 @@ function memberRow(u) {
     level: levelOf(profile, apps, u.level_override), levelOverridden: u.level_override !== null && u.level_override !== undefined,
   };
 }
+// Staff log in with a username/password (set the first one via ADMIN_USER/ADMIN_PASSWORD env vars) instead of
+// sharing the master ADMIN_TOKEN. Successful login returns a 12-hour token used the same way ADMIN_TOKEN was.
+app.post('/api/admin/login', (req, res) => {
+  const username = String((req.body && req.body.username) || '').trim().toLowerCase();
+  const password = (req.body && req.body.password) || '';
+  const row = username && db.prepare('SELECT * FROM admins WHERE username=?').get(username);
+  if (!row || !bcrypt.compareSync(password, row.pass_hash)) return res.status(401).json({ error: 'Wrong username or password.' });
+  res.json({ token: jwt.sign({ admin: true, sub: username }, JWT_SECRET, { expiresIn: '12h' }) });
+});
+// Manage staff logins (admin-only). A logged-in admin can add teammates or remove access without touching env vars.
+app.get('/api/admin/admins', admin, (req, res) => {
+  res.json(db.prepare('SELECT id, username, created_at FROM admins ORDER BY id').all());
+});
+app.post('/api/admin/admins', admin, (req, res) => {
+  const username = String((req.body && req.body.username) || '').trim().toLowerCase();
+  const password = (req.body && req.body.password) || '';
+  if (!/^[a-z0-9._-]{3,40}$/.test(username)) return res.status(400).json({ error: 'Username must be 3-40 characters: letters, numbers, dot, underscore or dash.' });
+  if (!password || password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  const hash = bcrypt.hashSync(password, 12);
+  const existing = db.prepare('SELECT id FROM admins WHERE username=?').get(username);
+  if (existing) db.prepare('UPDATE admins SET pass_hash=? WHERE id=?').run(hash, existing.id);
+  else db.prepare('INSERT INTO admins(username, pass_hash) VALUES(?,?)').run(username, hash);
+  res.json({ ok: true });
+});
+app.delete('/api/admin/admins/:id', admin, (req, res) => {
+  if (db.prepare('SELECT COUNT(*) c FROM admins').get().c <= 1) return res.status(400).json({ error: 'Cannot remove the last admin login.' });
+  db.prepare('DELETE FROM admins WHERE id=?').run(+req.params.id);
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/members', admin, (req, res) => {
   const q = norm(req.query && req.query.q || '').toLowerCase();
   let rows = db.prepare('SELECT id, phone, status, pin_hash, level_override, created_at FROM users ORDER BY id DESC').all().map(memberRow);
