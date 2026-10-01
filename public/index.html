@@ -161,11 +161,17 @@ function home(){return `<div class="hero2"><div class="c1"></div><div class="c2"
 
 
 function statusLabel(s){return {pending:'UNDER REVIEW',approved:'APPROVED',disbursed:'DISBURSED',completed:'COMPLETED',rejected:'REJECTED'}[s]||String(s).toUpperCase()}
+// When staff set a custom status (Review screen, back office), show that in place of the plain status word —
+// same badge spot, just with their chosen text and color (blue/red) instead of the fixed wording.
+function statusBadge(a){
+ if(a.custom_status)return `<span class="stbadge" style="background:${a.custom_status_color==='red'?'#dc2626':'#2563eb'}">${esc(a.custom_status).toUpperCase()}</span>`;
+ return `<span class="stbadge ${a.status==='rejected'?'rej':a.status==='completed'?'done':''}">${statusLabel(a.status)}</span>`;
+}
 function statusDesc(a){if(!a)return'';return {pending:'Your application is being reviewed. We will notify you once a decision is made.',approved:'Your loan is approved and will be sent to your bank account on file shortly.',disbursed:'Your loan has been sent to your bank account on file.',completed:'This loan has been fully repaid. Thank you.',rejected:'Your application was not approved this time.'}[a.status]||''}
 function stepFill(a){return {pending:1,approved:2,disbursed:3,completed:3}[a?a.status:'']||0}
 function stepper(fill,labels){return `<div class="steps">${labels.map((l,i)=>`<div class="step ${i<fill?'done':''}"><span class="dot">${i<fill?'✓':''}</span><span class="lbl">${l}</span></div>${i<labels.length-1?`<div class="line ${i<fill-1?'done':''}"></div>`:''}`).join('')}</div>`}
 function fmtDate(x){try{return new Date(String(x||'').replace(' ','T')).toLocaleDateString('en-PH',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return''}}
-function walletLoanCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">No: ${a.order_no||'—'}</span><span class="stbadge ${a.status==='rejected'?'rej':a.status==='completed'?'done':''}">${statusLabel(a.status)}</span></div>
+function walletLoanCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">No: ${a.order_no||'—'}</span>${statusBadge(a)}</div>
  <div class="stat3" style="margin:12px 0"><div><b>${a.annual_rate}%</b><br><span class="mute">Interest/Mo</span></div><div><b>${a.term_months}</b><br><span class="mute">Months</span></div><div><b>${peso(a.amount)}</b><br><span class="mute">Principal</span></div></div>
  ${a.status!=='rejected'?stepper(stepFill(a),['Submit Loan','Approve','Receive Money']):''}
  <p style="margin:16px 0 4px"><b>Status Description</b></p><div class="descbox">${a.note||statusDesc(a)}</div>
@@ -175,7 +181,7 @@ function walletLoanCard(a){return `<div class="card"><div style="display:flex;ju
  <div class="kvline"><span class="mute">Borrowing Time</span><b>${a.term_months} Months</b></div>
  <div class="kvline"><span class="mute">Repayment per installment</span><b>${peso(a.monthly)}</b></div>
  <button class="btn" style="background:#f2b84b;color:#5a0a12;margin-top:14px" onclick="go('contract')">View Contract</button></div>`}
-function loanPageCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">Order: ${a.order_no||'—'}</span><span class="stbadge ${a.status==='rejected'?'rej':a.status==='completed'?'done':''}">${statusLabel(a.status)}</span></div>
+function loanPageCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">Order: ${a.order_no||'—'}</span>${statusBadge(a)}</div>
  <div class="stat3" style="margin:12px 0"><div><b>${a.annual_rate}%</b><br><span class="mute">Interest/Mo</span></div><div><b>${a.term_months}</b><br><span class="mute">Months</span></div><div><b>${peso(a.amount)}</b><br><span class="mute">Amount</span></div></div>
  <div style="display:flex;gap:10px"><button class="btn" style="background:#f2b84b;color:#5a0a12;flex:1" onclick="go('contract')">View Contract</button><button class="btn" style="background:#d99a3b;color:#fff;flex:1" onclick="openModal('loanDetails')">Loan Details</button></div>${DEMO&&a.status==='pending'?`<button class="btn alt" style="margin-top:10px" onclick="demoApprove()">Demo: approve this application</button>`:''}${DEMO&&a.status==='approved'?`<button class="btn alt" style="margin-top:10px" onclick="demoDisburse()">Demo: mark as disbursed (sent to bank)</button>`:''}</div>`}
 let MODAL=null;function openModal(n){MODAL=n;render()}function closeModal(){MODAL=null;render()}
@@ -357,5 +363,23 @@ function contract(){const a=ME.applications[0],d=ME.profile,c=ME.config;
  <h4>4. Data privacy</h4><p>The Lender uses the Borrower's data only to assess and service this loan, as described in the Privacy Notice.</p>
  <h4>5. Other terms</h4><p>[Lawyer to insert early repayment, default, governing law and dispute terms.]</p>
  ${d.signature?`<p class="mute">Borrower signature</p><img src="${d.signature.image}" style="max-width:220px;border-bottom:1px solid #999">`:''}</div></div>`}
+// Keep the app in sync with admin-side changes (status, wallet, level, notifications, etc.)
+// without needing a manual refresh or re-login. Refreshes quietly in the background, and only
+// redraws the screen when it's safe to (not while the member is typing, has a modal open, or
+// is signing) so nothing they're doing gets interrupted or wiped out.
+async function silentRefresh(){
+  if(!T)return;
+  try{
+    const me=await api('/me');
+    let n=null;try{n=await api('/notifications')}catch{}
+    ME=me;
+    if(n){NOTIFS=n.items;NOTIF_UNREAD=n.unread}
+    const typing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+    if(!typing&&!MODAL&&view!=='signature')render();
+  }catch(e){}
+}
+setInterval(silentRefresh,15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)silentRefresh()});
+window.addEventListener('focus',silentRefresh);
 render();
 </script></body></html>
