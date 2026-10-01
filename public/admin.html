@@ -97,6 +97,7 @@ let MEMBERS=[],APPS=[],WDRAWS=[],NOTIFS=[],ADMINS=[],LOGINERR='';
 let Q='',NQ='',NTAB='all';
 let LQ='',WQS='';
 let MODAL=null,MDATA=null,MERR='',MOK='';
+const CS_COLORS={red:{bg:'#fdeaea',fg:'#c0392b'},green:{bg:'#e6f9ee',fg:'#15803d'},blue:{bg:'#e6f0fd',fg:'#1d4ed8'}};
 
 async function api(path,opt={}){
  const r=await fetch('/api'+path,{...opt,headers:{'Content-Type':'application/json','x-admin-token':TOKEN,...(opt.headers||{})}});
@@ -228,7 +229,7 @@ function membersPage(){
   <div style="display:flex;gap:8px"><input id="mq" placeholder="Search name or phone" value="${esc(NQ)}" style="width:220px" onkeydown="if(event.key==='Enter')searchMembers()"><button onclick="searchMembers()">Search</button>${NQ?`<button onclick="NQ='';Q='';loadMembers().then(render)" style="background:#eee;color:#333">Clear</button>`:''}</div>
   ${dateFilterRow(MRANGE,'setMRange')}
  </div>
- <div style="overflow-x:auto"><table><thead><tr><th>No.</th><th>Name</th><th>Phone</th><th>Wallet</th><th>Level</th><th>Withdrawal Code</th><th>Registered</th><th>Status</th><th>Note</th><th>Operate</th></tr></thead><tbody>
+ <div style="overflow-x:auto"><table><thead><tr><th>No.</th><th>Name</th><th>Phone</th><th>Wallet</th><th>Score</th><th>Withdrawal Code</th><th>Registered</th><th>Status</th><th>Note</th><th>Operate</th></tr></thead><tbody>
  ${rows.length?rows.map((m,i)=>memberRow(m,i+1)).join(''):`<tr><td class="empty" colspan="10">No members found.</td></tr>`}
  </tbody></table></div></div>`;
 }
@@ -244,7 +245,7 @@ function memberRow(m,no){
  <button class="opbtn blue" onclick="openMemberDetail(${m.id})">Checking data</button>
  <button class="opbtn" onclick="openModal('wallet',{id:${m.id},phone:'${m.phone}',balance:${m.balance}})">Wallet</button>
  <button class="opbtn gold" onclick="openModal('pin',{id:${m.id},phone:'${m.phone}'})">Withdrawal Code</button>
- <button class="opbtn" onclick="openModal('level',{id:${m.id},phone:'${m.phone}',level:${m.level},levelOverridden:${!!m.levelOverridden}})">Level</button>
+ <button class="opbtn" onclick="openModal('level',{id:${m.id},phone:'${m.phone}',level:${m.level},levelOverridden:${!!m.levelOverridden}})">Score</button>
  <button class="opbtn" onclick="openModal('identity',{id:${m.id}})">ID Identity</button>
  <button class="opbtn" onclick="openModal('password',{id:${m.id},phone:'${m.phone}'})">Password</button>
  <button class="opbtn" onclick="openModal('bank',{id:${m.id}})">Bank Card Number</button>
@@ -366,21 +367,21 @@ async function savePin(id){
 function levelModal(){
  const d=MDATA;
  const opts=[1,2,3,4,5].map(n=>`<option value="${n}" ${d.level===n?'selected':''}>${n}</option>`).join('');
- return simpleModal('Level',`
-  <div class="field"><label>Current level</label><input value="${d.level}${d.levelOverridden?' (manually set)':' (automatic)'}" disabled></div>
-  <div class="field"><label>New level</label><select id="lv_val">${opts}</select></div>
-  <div class="field .hint" style="font-size:11px;color:#999">Level is normally computed from real activity (profile complete → applied → approved/disbursed → repaid). Setting it here overrides that until you clear it.</div>
+ return simpleModal('Score',`
+  <div class="field"><label>Current score</label><input value="${d.level}${d.levelOverridden?' (manually set)':' (automatic)'}" disabled></div>
+  <div class="field"><label>New score</label><select id="lv_val">${opts}</select></div>
+  <div class="field .hint" style="font-size:11px;color:#999">Score is normally computed from real activity (profile complete → applied → approved/disbursed → repaid). Setting it here overrides that until you clear it.</div>
   <button class="opbtn" style="margin-top:6px" onclick="clearLevel(${d.id})">↺ Clear override (back to automatic)</button>`,
   `saveLevel(${d.id})`);
 }
 async function saveLevel(id){
  try{ await api(`/admin/members/${id}/level`,{method:'PUT',body:JSON.stringify({level:Number($('#lv_val').value)})});
-  MOK='Level updated.';await loadMembers();render();
+  MOK='Score updated.';await loadMembers();render();
  }catch(e){MERR=e.message;render()}
 }
 async function clearLevel(id){
  try{ await api(`/admin/members/${id}/level`,{method:'PUT',body:JSON.stringify({level:null})});
-  MOK='Level reset to automatic.';await loadMembers();render();
+  MOK='Score reset to automatic.';await loadMembers();render();
  }catch(e){MERR=e.message;render()}
 }
 function identityModal(){
@@ -449,8 +450,9 @@ function loansPage(){
 }
 function loanRow(a,no){
  const nm=(a.profile&&a.profile.id&&a.profile.id.name)||'—';
+ const csc=CS_COLORS[a.custom_status_color]||CS_COLORS.blue;
  const badge=a.custom_status
-  ?`<span class="badge" style="background:${a.custom_status_color==='red'?'#fdeaea':'#e6f0fd'};color:${a.custom_status_color==='red'?'#c0392b':'#1d4ed8'}">${esc(a.custom_status)}</span>`
+  ?`<span class="badge" style="background:${csc.bg};color:${csc.fg}">${esc(a.custom_status)}</span>`
   :`<span class="badge ${a.status}">${a.status}</span>`;
  return `<tr><td>#${no}</td><td>${a.order_no||a.id}</td><td>${esc(nm)}</td><td>${a.phone}</td>
  <td>${peso(a.amount)}</td><td>${a.term_months} mo</td><td>${dateOnly(a.created_at)}</td>
@@ -485,7 +487,8 @@ function reviewModal(){
    <div class="row2">
     <input id="rv_cs" placeholder="Leave blank to show the normal status instead" value="${esc(a.custom_status||'')}">
     <select id="rv_cscolor">
-     <option value="blue" ${a.custom_status_color!=='red'?'selected':''}>Blue</option>
+     <option value="blue" ${!a.custom_status_color||a.custom_status_color==='blue'?'selected':''}>Blue</option>
+     <option value="green" ${a.custom_status_color==='green'?'selected':''}>Green</option>
      <option value="red" ${a.custom_status_color==='red'?'selected':''}>Red</option>
     </select>
    </div>
@@ -678,6 +681,21 @@ function modalHTML(){
  if(MODAL==='modifyLoan')return modifyLoanModal();
  return '';
 }
+
+// Keep the back office current without a manual refresh — quietly reloads every ~12 seconds (and right
+// away when you switch back to this tab). Never redraws while a modal is open or you're typing/searching,
+// so it never interrupts something you're in the middle of editing.
+async function silentRefresh(){
+ if(!TOKEN)return;
+ try{
+  await Promise.all([loadMembers(),loadApps(),loadWithdrawals(),loadNotifs(),loadAdmins(),refreshStats()]);
+  const typing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+  if(!typing&&!MODAL)render();
+ }catch(e){}
+}
+setInterval(silentRefresh,12000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)silentRefresh()});
+window.addEventListener('focus',silentRefresh);
 
 render();
 if(TOKEN) boot();
