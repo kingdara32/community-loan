@@ -375,7 +375,10 @@ async function silentRefresh(){
     ME=me;
     if(n){NOTIFS=n.items;NOTIF_UNREAD=n.unread}
     const typing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
-    if(!typing&&!MODAL&&view!=='signature')render();
+    // Never silently redraw a form the member might be mid-way through — an ID/personal-info/bank edit,
+    // picking a photo, or signing — that would wipe out anything chosen/typed but not yet submitted.
+    const editing=['id','personal','bank','signature'].includes(view);
+    if(!typing&&!MODAL&&!editing)render();
   }catch(e){}
 }
 setInterval(silentRefresh,15000);
