@@ -139,7 +139,7 @@ async function render(){
   const A=$('#app');
   if(!T){return A.innerHTML=authView()}
   if(!ME)try{await load()}catch{return A.innerHTML=authView()}
-  const V={home,loan,wallet,contact,account,settings,repay,profile,contract,id:fID,personal:fPersonal,bank:fBank,signature:fSig}[view]||home;
+  const V={home,loan,wallet,contact,account,settings,repay,profile,contract,withdrawals,id:fID,personal:fPersonal,bank:fBank,signature:fSig}[view]||home;
   A.innerHTML=V()+(['id','personal','bank','signature'].includes(view)?'':navb()+bellHTML())+modalHTML();
   if(view==='signature')initSig();
   if(view==='loan')calc();
@@ -259,6 +259,10 @@ function wallet(){const a=ME.applications[0],bal=ME.balance||0;
  ${a?walletLoanCard(a):`<div class="card"><p style="margin:0 0 10px">No loan yet. Apply to see your progress here.</p><button class="btn" onclick="go('loan')">Apply for a loan</button></div>`}
  ${(ME.withdrawals||[]).length?`<div class="card wlist"><b style="padding:0 4px">Withdrawal history</b>${ME.withdrawals.map(w=>`<div class="row" style="cursor:default"><span>${peso(w.amount)}</span><span class="status s-${w.status==='paid'?'approved':w.status==='rejected'?'rejected':'pending'}">${w.status.toUpperCase()}</span></div>`).join('')}</div>`:''}
  </div>`}
+function withdrawals(){const list=ME.withdrawals||[];
+ return bar('Withdrawal Status','account')+`<div class="wrap" style="padding-top:10px">
+ ${list.length?list.map(w=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><b>${peso(w.amount)}</b><div class="mute" style="margin-top:2px">${fmtDate(w.created_at)}</div></div><span class="status s-${w.status==='paid'?'approved':w.status==='rejected'?'rejected':'pending'}">${w.status.toUpperCase()}</span></div>`).join(''):`<div class="card">You have no withdrawal requests yet.</div>`}
+ </div>`}
 function openSupport(){const u=ME.config.support;if(u)window.open(u,'_blank');else alert('This button opens your live chat (WhatsApp, Messenger or Telegram). Set SUPPORT_URL in the real app.')}
 function contact(){const q=[['1. What are the loan terms?','Complete your profile (valid ID, personal info, bank account and signature), then choose an amount and term. You need a valid ID and a bank account under your own name. There is no fee to apply or to receive your loan.'],
 ['2. How long does it take to apply?','Registering and completing your profile takes a few minutes. We aim to review applications within 1 business day. Contact customer service for more specific information.'],
@@ -268,7 +272,6 @@ function contact(){const q=[['1. What are the loan terms?','Complete your profil
 ['6. Can I delete my account?','Yes. Contact customer service and we will process your request under the Data Privacy Act.']];
  return bar('Contact us')+`<div class="wrap" style="padding-top:12px"><div class="card" style="text-align:center"><div style="width:58px;height:58px;border-radius:50%;background:#fff;box-shadow:0 1px 6px #0002;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:30px">🎧</div><button class="btn" style="margin:0" onclick="openSupport()">Online Service ➤</button></div>
  <div style="text-align:center;margin-bottom:14px"><span style="display:inline-block;background:#e8eef6;color:#1d4ed8;font-weight:700;font-size:13px;padding:8px 18px;border-radius:99px">Service time is ${ME.config.hours}</span></div>
- <div class="card faq" style="border-left:4px solid var(--r2)"><b>How you get your money</b><p>An approved loan is sent straight to the bank account in your profile. There is no withdrawal step and no fee to receive it.</p></div>
  ${q.map(([a,b])=>`<div class="card faq"><b>${a}</b><p>${b}</p></div>`).join('')}</div>`}
 
 // The account's real tier is still 1–5 (computed server-side from activity), but it's shown here as a
@@ -296,7 +299,7 @@ function levelGauge(level){level=Math.max(1,Math.min(5,level||1));const cx=100,c
  <text x="${cx}" y="${cy+7}" font-size="10" fill="#ffffffbb" text-anchor="middle" font-family="Arial">of 900</text>
  </svg>`}
 function account(){const lvl=ME.level||1;
- const rows=[['profile','📁','#64748b','My Profile'],['contract','📝','#3b82f6','My Contract'],['loan','💰','#f59e0b','My Loan'],['repay','🤝','#0ea5e9','My Repayment']];
+ const rows=[['withdrawals','✅','#16a34a','Withdrawal Status'],['profile','📁','#64748b','My Profile'],['contract','📝','#3b82f6','My Contract'],['loan','💰','#f59e0b','My Loan'],['repay','🤝','#0ea5e9','My Repayment']];
  return `<div class="hd" style="text-align:left;padding:22px 20px;border-radius:0 0 22px 22px"><div style="text-align:center;margin-bottom:16px">Personal Center</div>
  <div style="display:flex;gap:14px;align-items:center"><div style="flex:none">${levelGauge(lvl)}</div><div><div style="font-size:20px;font-weight:700">Account number</div><div style="font-size:20px;font-family:Georgia,serif;margin-top:6px">${ME.phone}</div></div></div>
  <div style="display:flex;gap:14px;margin-top:18px"><div class="pill" onclick="go('wallet')">₱ My wallet</div><div class="pill" onclick="go('settings')">⚙️ Settings</div></div></div>
@@ -374,7 +377,7 @@ function contract(){const a=ME.applications[0],d=ME.profile,c=ME.config;
  Loan Amount Applied: ${peso(a.amount)}<br>
  Repayment Period: ${a.term_months} months<br>
  Interest Rate: ${a.annual_rate}% per month<br>
- Monthly Repayment: ${pesoWhole(repaySchedule(a)[0])}${a.term_months>1?` (final installment ${pesoWhole(repaySchedule(a)[a.term_months-1])})`:''}<br>
+ Monthly Repayment: ${pesoWhole(repaySchedule(a)[0])}<br>
  Beneficiary Name: ${esc(ben)}</p>
  <p>This Loan Agreement ("Agreement") is entered into by and between the Lender (hereinafter "Party A") and the Borrower named above (hereinafter "Party B"), collectively the "Parties."</p>
  <h4>Article 1 — Form of the Loan</h4><p>This is an unsecured, credit-based loan extended to Party B on the basis of Party B's identity verification and creditworthiness, without the pledge of collateral or security.</p>
