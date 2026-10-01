@@ -291,8 +291,9 @@ function levelGauge(level){level=Math.max(1,Math.min(5,level||1));const cx=100,c
  ${ticks}
  <line x1="${cx}" y1="${cy}" x2="${nEnd[0].toFixed(1)}" y2="${nEnd[1].toFixed(1)}" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
  <circle cx="${cx}" cy="${cy}" r="5" fill="#fff"/>
- <text x="${cx}" y="${cy-26}" font-size="26" font-weight="800" fill="#fff" text-anchor="middle" font-family="Georgia,serif">Sc ${level}</text>
- <text x="${cx}" y="${cy-8}" font-size="10" fill="#ffffffbb" text-anchor="middle" font-family="Arial">of 5</text>
+ <text x="${cx}" y="${cy-36}" font-size="11" font-weight="700" letter-spacing="2" fill="#ffffffcc" text-anchor="middle" font-family="Arial">SCORE</text>
+ <text x="${cx}" y="${cy-9}" font-size="28" font-weight="800" fill="#fff" text-anchor="middle" font-family="Georgia,serif">${level}</text>
+ <text x="${cx}" y="${cy+7}" font-size="10" fill="#ffffffbb" text-anchor="middle" font-family="Arial">of 5</text>
  </svg>`}
 function account(){const lvl=ME.level||1;
  const rows=[['profile','📁','#64748b','My Profile'],['contract','📝','#3b82f6','My Contract'],['loan','💰','#f59e0b','My Loan'],['repay','🤝','#0ea5e9','My Repayment']];
