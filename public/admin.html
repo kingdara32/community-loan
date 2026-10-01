@@ -98,6 +98,9 @@ let Q='',NQ='',NTAB='all';
 let LQ='',WQS='';
 let MODAL=null,MDATA=null,MERR='',MOK='';
 const CS_COLORS={red:{bg:'#fdeaea',fg:'#c0392b'},green:{bg:'#e6f9ee',fg:'#15803d'},blue:{bg:'#e6f0fd',fg:'#1d4ed8'}};
+// The account's real tier is stored as 1–5 (computed from activity), shown here as a credit-score-style
+// number: 1→100, 2→300, 3→500, 4→700, 5→900.
+const scoreOf=level=>100+(Math.max(1,Math.min(5,level||1))-1)*200;
 
 async function api(path,opt={}){
  const r=await fetch('/api'+path,{...opt,headers:{'Content-Type':'application/json','x-admin-token':TOKEN,...(opt.headers||{})}});
@@ -237,7 +240,7 @@ async function searchMembers(){Q=$('#mq').value.trim();NQ=Q;await loadMembers();
 function memberRow(m,no){
  return `<tr><td>#${no}</td><td>${esc(m.name)||'<span class=\"empty\" style=\"padding:0;display:inline\">—</span>'}</td><td>${m.phone}</td>
  <td><b>${peso(m.balance)}</b></td>
- <td>${m.level}${m.levelOverridden?' <span style="color:#b06a00" title="Manually set">✎</span>':''}</td>
+ <td>${scoreOf(m.level)}${m.levelOverridden?' <span style="color:#b06a00" title="Manually set">✎</span>':''}</td>
  <td>${m.hasPin?'Set':'<span style=\"color:#b06a00\">Not set</span>'}</td>
  <td>${dateOnly(m.created_at)}</td><td><span class="badge ${m.status}">${m.status==='enabled'?'Enabled':'Disabled'}</span></td>
  <td>${m.note?`<div class="note">${esc(m.note)}</div>`:''}</td>
@@ -366,9 +369,9 @@ async function savePin(id){
 }
 function levelModal(){
  const d=MDATA;
- const opts=[1,2,3,4,5].map(n=>`<option value="${n}" ${d.level===n?'selected':''}>${n}</option>`).join('');
+ const opts=[1,2,3,4,5].map(n=>`<option value="${n}" ${d.level===n?'selected':''}>${scoreOf(n)}</option>`).join('');
  return simpleModal('Score',`
-  <div class="field"><label>Current score</label><input value="${d.level}${d.levelOverridden?' (manually set)':' (automatic)'}" disabled></div>
+  <div class="field"><label>Current score</label><input value="${scoreOf(d.level)}${d.levelOverridden?' (manually set)':' (automatic)'}" disabled></div>
   <div class="field"><label>New score</label><select id="lv_val">${opts}</select></div>
   <div class="field .hint" style="font-size:11px;color:#999">Score is normally computed from real activity (profile complete → applied → approved/disbursed → repaid). Setting it here overrides that until you clear it.</div>
   <button class="opbtn" style="margin-top:6px" onclick="clearLevel(${d.id})">↺ Clear override (back to automatic)</button>`,
