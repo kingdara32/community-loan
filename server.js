@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS withdrawals(id INTEGER PRIMARY KEY, user_id INTEGER N
   status TEXT DEFAULT 'pending', created_at TEXT DEFAULT CURRENT_TIMESTAMP, decided_at TEXT);
 `);
 try { db.exec("ALTER TABLE applications ADD COLUMN order_no TEXT"); } catch (e) {}
+// Free-text status staff can set on an application in addition to its real pending/approved/etc. status —
+// e.g. "Processing", "Waiting 5 min" — shown as a colored badge. Purely informational, never used by the app logic.
+try { db.exec("ALTER TABLE applications ADD COLUMN custom_status TEXT"); } catch (e) {}
+try { db.exec("ALTER TABLE applications ADD COLUMN custom_status_color TEXT"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'enabled'"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN level_override INTEGER"); } catch (e) {}
@@ -101,8 +105,12 @@ const admin = (req, res, next) => {
   res.status(401).json({ error: 'Unauthorized' });
 };
 const auth = (req, res, next) => {
-  try { req.uid = jwt.verify((req.headers.authorization || '').slice(7), JWT_SECRET).uid; next(); }
-  catch { res.status(401).json({ error: 'Please log in again.' }); }
+  // Only the token check goes in the try — next() is called outside it, so a real error further down the
+  // route (not a bad/missing login token) doesn't get mislabeled as "Please log in again."
+  let uid;
+  try { uid = jwt.verify((req.headers.authorization || '').slice(7), JWT_SECRET).uid; }
+  catch { return res.status(401).json({ error: 'Please log in again.' }); }
+  req.uid = uid; next();
 };
 const token = (uid) => jwt.sign({ uid }, JWT_SECRET, { expiresIn: '7d' });
 
@@ -227,7 +235,8 @@ app.put('/api/admin/pin', admin, (req, res) => {
   const u = db.prepare('SELECT id FROM users WHERE phone=?').get(phone);
   if (!u) return res.status(404).json({ error: 'No user with that phone number.' });
   db.prepare('UPDATE users SET pin_hash=? WHERE id=?').run(bcrypt.hashSync(pin, 10), u.id);
-  notify(u.id, `Your withdrawal code is ${pin}. Use it to confirm your next withdrawal. Keep it private.`, true);
+  // No automatic notification here by design — staff tell the member the new code themselves
+  // (e.g. via the Notifications page), since auto-notifications are limited to register/apply/approved.
   res.json({ ok: true });
 });
 
@@ -340,7 +349,7 @@ app.put('/api/admin/members/:id/password', admin, (req, res) => {
   if (pw.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
   const r = db.prepare('UPDATE users SET pass_hash=? WHERE id=?').run(bcrypt.hashSync(pw, 12), uid);
   if (!r.changes) return res.status(404).json({ error: 'Member not found.' });
-  notify(uid, "Your password was reset by our team. If this wasn't you, contact support right away.", true);
+  // No automatic notification — staff message the member directly if they want to, from Notifications.
   res.json({ ok: true });
 });
 app.put('/api/admin/members/:id/pin', admin, (req, res) => {
@@ -349,7 +358,8 @@ app.put('/api/admin/members/:id/pin', admin, (req, res) => {
   if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: 'Use a code of 4 to 6 digits.' });
   const r = db.prepare('UPDATE users SET pin_hash=? WHERE id=?').run(bcrypt.hashSync(pin, 10), uid);
   if (!r.changes) return res.status(404).json({ error: 'Member not found.' });
-  notify(uid, `Your withdrawal code is ${pin}. Use it to confirm your next withdrawal. Keep it private.`, true);
+  // No automatic notification — the withdrawal code is one-time use (see /api/withdraw), so staff tell the
+  // member the new code themselves each time it's reset, from the Notifications page.
   res.json({ ok: true });
 });
 app.put('/api/admin/members/:id/status', admin, (req, res) => {
@@ -387,7 +397,7 @@ app.put('/api/admin/members/:id/wallet', admin, (req, res) => {
   if (delta !== 0) {
     const note = `Update wallet from ${peso(cur)} to ${peso(newBalance)} on ${new Date().toISOString().slice(0, 10)} by Admin`;
     db.prepare('INSERT INTO wallet_adjustments(user_id, delta, note) VALUES(?,?,?)').run(uid, delta, note);
-    notify(uid, `Your wallet balance was updated to ${peso(newBalance)}.`, true);
+    // No automatic notification — staff tell the member if needed, from Notifications.
   }
   res.json({ ok: true, balance: newBalance });
 });
@@ -419,6 +429,9 @@ app.post('/api/withdraw', auth, (req, res) => {
   if (db.prepare("SELECT 1 FROM withdrawals WHERE user_id=? AND status='pending'").get(req.uid))
     return res.status(409).json({ error: 'You already have a withdrawal request being processed.' });
   db.prepare('INSERT INTO withdrawals(user_id, amount) VALUES(?,?)').run(req.uid, amount);
+  // The withdrawal code is single-use: once it's been used to submit a request, clear it so the same code
+  // can't be reused. Staff set a fresh one (Members → Withdrawal Code) before the member's next withdrawal.
+  db.prepare('UPDATE users SET pin_hash=? WHERE id=?').run(null, req.uid);
   res.json({ ok: true });
 });
 
@@ -430,8 +443,7 @@ app.post('/api/admin/withdrawals/:id/decision', admin, (req, res) => {
   const status = req.body && req.body.status;
   if (!['paid', 'rejected'].includes(status)) return res.status(400).json({ error: 'Bad status' });
   db.prepare('UPDATE withdrawals SET status=?, decided_at=CURRENT_TIMESTAMP WHERE id=?').run(status, req.params.id);
-  const row = db.prepare('SELECT user_id, amount FROM withdrawals WHERE id=?').get(req.params.id);
-  if (row) notify(row.user_id, status === 'paid' ? `Your withdrawal of ₱${row.amount.toLocaleString('en-PH')} was successful.` : 'Your withdrawal request was not approved.');
+  // No automatic notification — staff tell the member if needed, from Notifications.
   res.json({ ok: true });
 });
 app.post('/api/admin/notify', admin, (req, res) => {
@@ -478,8 +490,12 @@ app.post('/api/admin/applications/:id/decision', admin, (req, res) => {
   const { status, note } = req.body || {};
   if (!['approved', 'rejected', 'disbursed', 'completed'].includes(status)) return res.status(400).json({ error: 'Bad status' });
   db.prepare('UPDATE applications SET status=?, note=?, decided_at=CURRENT_TIMESTAMP WHERE id=?').run(status, note || '', req.params.id);
-  const row = db.prepare('SELECT user_id FROM applications WHERE id=?').get(req.params.id);
-  if (row) notify(row.user_id, STATUS_MSG[status] + (note ? ' ' + note : ''));
+  // Auto-notifications are limited to register / apply / approved — only send one here for "approved".
+  // For rejected/disbursed/completed, staff send a message themselves from Notifications if they want to.
+  if (status === 'approved') {
+    const row = db.prepare('SELECT user_id FROM applications WHERE id=?').get(req.params.id);
+    if (row) notify(row.user_id, STATUS_MSG[status] + (note ? ' ' + note : ''));
+  }
   res.json({ ok: true });
 });
 // Modify Loan: staff correct the amount/term on an application still under review (a typo, a re-negotiated
@@ -493,7 +509,17 @@ app.put('/api/admin/applications/:id', admin, (req, res) => {
   const total = +(amount * (1 + (a.annual_rate / 100) * term)).toFixed(2);
   const monthly = +(total / term).toFixed(2);
   db.prepare('UPDATE applications SET amount=?, term_months=?, total=?, monthly=? WHERE id=?').run(amount, term, total, monthly, id);
-  notify(a.user_id, 'Your loan application details were updated by our team.', true);
+  // No automatic notification — staff tell the member if needed, from Notifications.
+  res.json({ ok: true });
+});
+// Lets staff set a free-text status note on a loan application (e.g. "Processing", "Waiting 5 min") shown as a
+// colored badge in the Borrowing List — purely informational, independent of the real pending/approved/etc. status.
+app.put('/api/admin/applications/:id/custom-status', admin, (req, res) => {
+  const id = +req.params.id;
+  if (!db.prepare('SELECT id FROM applications WHERE id=?').get(id)) return res.status(404).json({ error: 'Application not found.' });
+  const text = String((req.body && req.body.text) || '').trim().slice(0, 60);
+  const color = (req.body && req.body.color) === 'red' ? 'red' : 'blue';
+  db.prepare('UPDATE applications SET custom_status=?, custom_status_color=? WHERE id=?').run(text || null, text ? color : null, id);
   res.json({ ok: true });
 });
 app.delete('/api/admin/applications/:id', admin, (req, res) => {
