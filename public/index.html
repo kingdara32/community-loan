@@ -231,17 +231,17 @@ function loan(){
   }
   return h+foot();
 }
-function loanForm(c){LT=LT&&c.terms.includes(LT)?LT:c.terms[0];
+function loanForm(c){LT=LT&&c.terms.includes(LT)?LT:c.terms[0];LA=(LA!=null&&LA>=c.min&&LA<=c.max)?LA:c.min;
  return `<div class="loanhero" style="background-image:url(img/home-1.jpg)"><div class="lh-bubble">GET A LOAN<br>TODAY</div><div class="lh-badge">APPLY FOR A LOAN NOW</div></div>
- <div class="wrap" style="padding-top:14px"><div class="card" style="text-align:center"><input id="amBig" class="amtbig" type="number" inputmode="numeric" step="1000" value="${c.min}" oninput="typeAmt()" onblur="typeAmtDone()"><div class="mute" style="margin-top:6px">Loan Interest (${c.rate}%)</div></div>
+ <div class="wrap" style="padding-top:14px"><div class="card" style="text-align:center"><input id="amBig" class="amtbig" type="number" inputmode="numeric" step="1000" value="${LA}" oninput="typeAmt()" onblur="typeAmtDone()"><div class="mute" style="margin-top:6px">Loan Interest (${c.rate}%)</div></div>
  <div class="stat3"><div><b id="statAmt"></b><br><span class="mute">Loan Amount</span></div><div><b id="statPay"></b><br><span class="mute">Repayment per installment</span></div><div><b id="statTerm"></b><br><span class="mute">Borrowing Time (months)</span></div></div>
- <div class="card"><label>Loan Amount</label><input id="am" type="range" min="${c.min}" max="${c.max}" step="1000" value="${c.min}" oninput="onSlide()">
+ <div class="card"><label>Loan Amount</label><input id="am" type="range" min="${c.min}" max="${c.max}" step="1000" value="${LA}" oninput="onSlide()">
  <div class="mute" style="display:flex;justify-content:space-between"><span>${peso(c.min)}</span><span>${peso(c.max)}</span></div></div>
  <div class="card"><label>Borrowing Time</label><div class="termrow">${c.terms.map(t=>`<button type="button" class="termbtn" data-t="${t}" onclick="pickTerm(${t})">${t} Months</button>`).join('')}</div></div>
  <div class="err" id="lerr">${msg}</div><button class="btn" style="border-radius:99px;font-size:18px" onclick="apply()">Apply Now</button></div>`}
-let LT=null;
+let LT=null,LA=null;
 function pickTerm(t){LT=t;calc()}
-function calc(){if(!$('#am'))return;const amt=+$('#am').value,c=ME.config;if(!c.terms.includes(LT))LT=c.terms[0];
+function calc(){if(!$('#am'))return;const amt=+$('#am').value,c=ME.config;if(!c.terms.includes(LT))LT=c.terms[0];LA=amt;
  const tot=amt*(1+c.rate/100*LT),pay=tot/LT;
  $('#statAmt').textContent=peso(amt);$('#statPay').textContent=pesoWhole(pay);$('#statTerm').textContent=LT;
  document.querySelectorAll('.termbtn').forEach(b=>b.classList.toggle('on',+b.dataset.t===LT))}
@@ -274,6 +274,9 @@ function contact(){const q=[['1. What are the loan terms?','Complete your profil
  <div class="card faq" style="border-left:4px solid var(--r2)"><b>How you get your money</b><p>An approved loan is sent straight to the bank account in your profile. There is no withdrawal step and no fee to receive it.</p></div>
  ${q.map(([a,b])=>`<div class="card faq"><b>${a}</b><p>${b}</p></div>`).join('')}</div>${foot()}`}
 
+// The account's real tier is still 1–5 (computed server-side from activity), but it's shown here as a
+// credit-score-style number: 1→100, 2→300, 3→500, 4→700, 5→900.
+const scoreOf=level=>100+(Math.max(1,Math.min(5,level||1))-1)*200;
 function levelGauge(level){level=Math.max(1,Math.min(5,level||1));const cx=100,cy=108,r=82,startA=180,endA=0;
  const pol=(rad)=>{const t=rad*Math.PI/180;return[cx+r*Math.cos(t),cy-r*Math.sin(t)]};
  const curA=startA-(level-1)/4*(startA-endA);
@@ -282,8 +285,8 @@ function levelGauge(level){level=Math.max(1,Math.min(5,level||1));const cx=100,c
  const prog=`M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 0 1 ${xc.toFixed(1)} ${yc.toFixed(1)}`;
  let ticks='';for(let i=1;i<=5;i++){const a=startA-(i-1)/4*(startA-endA);
   const pin=(rr)=>{const t=a*Math.PI/180;return[cx+rr*Math.cos(t),cy-rr*Math.sin(t)]};
-  const[tx1,ty1]=pin(r-9),[tx2,ty2]=pin(r+2),[lx,ly]=pin(r+16);
-  ticks+=`<line x1="${tx1.toFixed(1)}" y1="${ty1.toFixed(1)}" x2="${tx2.toFixed(1)}" y2="${ty2.toFixed(1)}" stroke="#fff" stroke-width="2.5" opacity=".9"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="9" fill="#fff" opacity=".9" text-anchor="middle" font-family="Arial" dominant-baseline="middle">${i}</text>`}
+  const[tx1,ty1]=pin(r-9),[tx2,ty2]=pin(r+2),[lx,ly]=pin(r+17);
+  ticks+=`<line x1="${tx1.toFixed(1)}" y1="${ty1.toFixed(1)}" x2="${tx2.toFixed(1)}" y2="${ty2.toFixed(1)}" stroke="#fff" stroke-width="2.5" opacity=".9"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="7.5" fill="#fff" opacity=".9" text-anchor="middle" font-family="Arial" dominant-baseline="middle">${scoreOf(i)}</text>`}
  const[nx,ny]=pol(curA-0),nEnd=(()=>{const t=curA*Math.PI/180;return[cx+(r-14)*Math.cos(t),cy-(r-14)*Math.sin(t)]})();
  return `<svg viewBox="0 0 200 140" width="118" height="82" style="overflow:visible">
  <path d="${track}" fill="none" stroke="#ffffff55" stroke-width="9" stroke-linecap="round"/>
@@ -292,8 +295,8 @@ function levelGauge(level){level=Math.max(1,Math.min(5,level||1));const cx=100,c
  <line x1="${cx}" y1="${cy}" x2="${nEnd[0].toFixed(1)}" y2="${nEnd[1].toFixed(1)}" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
  <circle cx="${cx}" cy="${cy}" r="5" fill="#fff"/>
  <text x="${cx}" y="${cy-36}" font-size="11" font-weight="700" letter-spacing="2" fill="#ffffffcc" text-anchor="middle" font-family="Arial">SCORE</text>
- <text x="${cx}" y="${cy-9}" font-size="28" font-weight="800" fill="#fff" text-anchor="middle" font-family="Georgia,serif">${level}</text>
- <text x="${cx}" y="${cy+7}" font-size="10" fill="#ffffffbb" text-anchor="middle" font-family="Arial">of 5</text>
+ <text x="${cx}" y="${cy-9}" font-size="24" font-weight="800" fill="#fff" text-anchor="middle" font-family="Georgia,serif">${scoreOf(level)}</text>
+ <text x="${cx}" y="${cy+7}" font-size="10" fill="#ffffffbb" text-anchor="middle" font-family="Arial">of 900</text>
  </svg>`}
 function account(){const lvl=ME.level||1;
  const rows=[['profile','📁','#64748b','My Profile'],['contract','📝','#3b82f6','My Contract'],['loan','💰','#f59e0b','My Loan'],['repay','🤝','#0ea5e9','My Repayment']];
@@ -320,7 +323,9 @@ function profile(){return bar('My profile','account')+`<div class="wrap"><div cl
  <div class="err" id="perr"></div><button class="btn" onclick="submitProfile()">Submit</button></div>`}
 function submitProfile(){if(['id','personal','bank','signature'].every(k=>ME.profile[k]))go('loan');else $('#perr').textContent='Please complete all four steps first.'}
 
-const field=(id,l,v='',t='text')=>`<label>${l}</label><input id="${id}" type="${t}" value="${(v||'').replace(/"/g,'&quot;')}">`;
+// Bank account fields: typed only, no pasting/dropping text in (covers right-click paste, Ctrl+V, and
+// long-press paste on mobile — all fire the same "paste" event).
+const field=(id,l,v='',t='text')=>`<label>${l}</label><input id="${id}" type="${t}" value="${(v||'').replace(/"/g,'&quot;')}" autocomplete="off" onpaste="return false" oncopy="return false" oncut="return false" ondrop="return false">`;
 async function save(section,body){try{await api('/profile/'+section,{method:'PUT',body});await load();go('profile')}catch(e){msg=e.message;render()}}
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const uri=s=>'data:image/svg+xml;utf8,'+encodeURIComponent(s);
@@ -385,8 +390,9 @@ async function silentRefresh(){
     if(n){NOTIFS=n.items;NOTIF_UNREAD=n.unread}
     const typing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
     // Never silently redraw a form the member might be mid-way through — an ID/personal-info/bank edit,
-    // picking a photo, or signing — that would wipe out anything chosen/typed but not yet submitted.
-    const editing=['id','personal','bank','signature'].includes(view);
+    // picking a photo, signing, or choosing a loan amount/term — that would wipe out anything chosen/typed
+    // but not yet submitted.
+    const editing=['id','personal','bank','signature','loan'].includes(view);
     if(!typing&&!MODAL&&!editing)render();
   }catch(e){}
 }
