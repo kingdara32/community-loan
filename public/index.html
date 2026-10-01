@@ -285,7 +285,7 @@ function levelGauge(level){level=Math.max(1,Math.min(5,level||1));const cx=100,c
   const[tx1,ty1]=pin(r-9),[tx2,ty2]=pin(r+2),[lx,ly]=pin(r+17);
   ticks+=`<line x1="${tx1.toFixed(1)}" y1="${ty1.toFixed(1)}" x2="${tx2.toFixed(1)}" y2="${ty2.toFixed(1)}" stroke="#fff" stroke-width="2.5" opacity=".9"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="7.5" fill="#fff" opacity=".9" text-anchor="middle" font-family="Arial" dominant-baseline="middle">${scoreOf(i)}</text>`}
  const[nx,ny]=pol(curA-0),nEnd=(()=>{const t=curA*Math.PI/180;return[cx+(r-14)*Math.cos(t),cy-(r-14)*Math.sin(t)]})();
- return `<svg viewBox="0 0 200 140" width="118" height="82" style="overflow:visible">
+ return `<svg viewBox="0 0 200 140" width="160" height="112" style="overflow:visible">
  <path d="${track}" fill="none" stroke="#ffffff55" stroke-width="9" stroke-linecap="round"/>
  <path d="${prog}" fill="none" stroke="#f2b84b" stroke-width="9" stroke-linecap="round"/>
  ${ticks}
@@ -302,7 +302,8 @@ function account(){const lvl=ME.level||1;
  <div style="display:flex;gap:14px;margin-top:18px"><div class="pill" onclick="go('wallet')">₱ My wallet</div><div class="pill" onclick="go('settings')">⚙️ Settings</div></div></div>
  <div class="wrap"><div class="card" style="padding:4px 16px">${rows.map(([k,e,c,l])=>`<div class="row" onclick="go('${k}')"><span style="display:flex;align-items:center;gap:14px"><i class="ic" style="background:${c}22;color:${c}">${e}</i><b>${l}</b></span><span>›</span></div>`).join('')}</div></div>`}
 
-function settings(){return bar('Settings','account')+`<div class="wrap"><div class="card"><p class="mute" style="margin:0">Phone number</p><b>${ME.phone}</b><p class="mute" style="margin:14px 0 0">Lender</p><b>${ME.config.lender}</b><br><span class="mute">SEC No. ${ME.config.sec}</span></div><div class="card"><p class="mute" style="margin:0">Withdrawal code</p><b>${ME.hasPin?'Set by our team':'Not set yet'}</b><p class="mute" style="margin:8px 0 0">${ME.hasPin?'Check your notifications 🔔 for the code, or contact support if you need it reset.':'Only our team can set this. Contact support, then check your notifications 🔔 for the code.'}</p></div><button class="btn" onclick="logout()">Log out</button></div>`}
+function settings(){const nm=(ME.profile&&ME.profile.id&&ME.profile.id.name)||ME.phone;
+ return bar('Settings','account')+`<div class="wrap"><div class="card"><p class="mute" style="margin:0">Phone number</p><b>${ME.phone}</b><p class="mute" style="margin:14px 0 0">Account name</p><b>${esc(nm)}</b></div><button class="btn" onclick="logout()">Log out</button></div>`}
 
 function repay(){const a=ME.applications[0],live=a&&['approved','disbursed'].includes(a.status);
  if(!live)return bar('My Repayment Period','account')+`<div class="wrap"><div class="card">Your repayment schedule appears here after your loan is approved.</div></div>`;
@@ -365,14 +366,32 @@ function saveSig(){if(!drew){msg='Please sign in the box.';return render()}save(
 
 function contract(){const a=ME.applications[0],d=ME.profile,c=ME.config;
  if(!a)return bar('My contract','account')+`<div class="wrap"><div class="card">Your contract appears here after you submit a loan application.</div></div>`;
+ const ben=(d.bank&&d.bank.holder)||(d.id&&d.id.name)||'';
  return bar('My contract','account')+`<div class="wrap"><div class="card contract"><b>LOAN AGREEMENT</b><p>
- Order number: ${a.order_no||'—'}<br>Lender: ${c.lender} (SEC No. ${c.sec})<br>Borrower: ${d.id?.name||''}<br>ID number: ${d.id?.id_no||''}<br>Mobile: ${ME.phone}<br>
- Loan amount: ${peso(a.amount)}<br>Term: ${a.term_months} months<br>Interest: ${a.annual_rate}% per month, flat<br>Repayment per installment: ${pesoWhole(repaySchedule(a)[0])}${a.term_months>1?` (final installment ${pesoWhole(repaySchedule(a)[a.term_months-1])})`:''}<br>Total to repay: ${peso(a.total)}<br>Disbursed to: ${d.bank?.bank_name||''} ${d.bank?d.bank.account_no.slice(-4).padStart(d.bank.account_no.length,'•'):''}</p>
- <h4>1. No upfront fees</h4><p>The Lender does not charge any fee, deposit or payment before the loan is released to the Borrower's bank account.</p>
- <h4>2. Repayment</h4><p>The Borrower repays the total amount above in equal monthly payments.</p>
- <h4>3. Late payment</h4><p>[Lawyer to insert late-payment charge, if any, within the limits set by law.]</p>
- <h4>4. Data privacy</h4><p>The Lender uses the Borrower's data only to assess and service this loan, as described in the Privacy Notice.</p>
- <h4>5. Other terms</h4><p>[Lawyer to insert early repayment, default, governing law and dispute terms.]</p>
+ Name of the Borrower: ${esc(d.id?.name||'')}<br>
+ ID Number: ${esc(d.id?.id_no||'')}<br>
+ Registered Phone Number: ${esc(ME.phone)}<br>
+ Loan Amount Applied: ${peso(a.amount)}<br>
+ Repayment Period: ${a.term_months} months<br>
+ Interest Rate: ${a.annual_rate}% per month<br>
+ Monthly Repayment: ${pesoWhole(repaySchedule(a)[0])}${a.term_months>1?` (final installment ${pesoWhole(repaySchedule(a)[a.term_months-1])})`:''}<br>
+ Beneficiary Name: ${esc(ben)}</p>
+ <p>This Loan Agreement ("Agreement") is entered into by and between the Lender (hereinafter "Party A") and the Borrower named above (hereinafter "Party B"), collectively the "Parties."</p>
+ <h4>Article 1 — Form of the Loan</h4><p>This is an unsecured, credit-based loan extended to Party B on the basis of Party B's identity verification and creditworthiness, without the pledge of collateral or security.</p>
+ <h4>Article 2 — Interest Rate</h4><p>The interest rate applied to this loan is a premium rate that in no case exceeds twenty-five percent (25%) per year, consistent with the Interest Rate and Monthly Repayment stated above.</p>
+ <h4>Article 3 — Tenure Obligations</h4><p>During the term of this Agreement, Party B agrees to: (a) pay interest on the same date each repayment period; (b) repay the principal amount in full and on time according to the Repayment Period; (c) cooperate fully with Party A if any problem arises with the borrowing account; and (d) comply with all other terms of this Agreement.</p>
+ <h4>Article 4 — Risk Coverage and Repayment Discipline</h4><p>1. Party B shall bear the credit risk associated with this loan and shall not transfer or assign this obligation to any third party without Party A's written consent.<br>
+ 2. Party B shall truthfully disclose their financial status to Party A upon request, including any material change that could affect their ability to repay.<br>
+ 3. Any attempt to transfer credit obligations in order to conceal financial difficulty is strictly prohibited and constitutes a breach of this Agreement.<br>
+ 4. Repayments are due on the schedule agreed above; Party B shall not unilaterally delay or alter the repayment timing.<br>
+ 5. Where a repayment is more than three (3) days overdue, penalty interest of zero point five percent (0.5%) per day shall accrue on the overdue amount until paid in full.</p>
+ <h4>Article 5 — Party A's Rights Prior to Disbursement</h4><p>Before releasing the loan, Party A reserves the right to review, verify, and request additional information or documentation from Party B, and may decline or adjust the loan at its discretion based on that review.</p>
+ <h4>Article 6 — Restrictions on Use of Funds</h4><p>Party B shall not use the loan proceeds for any illegal purpose, including but not limited to gambling, prohibited speculation, or any other activity restricted under applicable law.</p>
+ <h4>Article 7 — Termination and Alteration</h4><p>This Agreement may only be terminated or altered by written agreement of both Parties, or as otherwise permitted under applicable law. Termination does not relieve Party B of any repayment obligation already due.</p>
+ <h4>Article 8 — Dispute Resolution</h4><p>Any dispute arising from or in connection with this Agreement shall first be resolved through good-faith negotiation between the Parties, and failing that, through the dispute resolution process available under applicable law.</p>
+ <h4>Article 9 — Insurance</h4><p>Party A may, where applicable, require or offer a loan-related insurance policy; any such policy's terms and requirements will be disclosed to Party B separately and are subject to Party B's consent where required by law.</p>
+ <h4>Article 10 — Validity</h4><p>This Agreement becomes valid and binding once it has been confirmed and digitally signed by Party B and accepted by Party A, at which point its terms take effect in full.</p>
+ <p style="margin-top:14px">Party A: Credit provider.<br>Party B: Credit receiver.</p>
  ${d.signature?`<p class="mute">Borrower signature</p><img src="${d.signature.image}" style="max-width:220px;border-bottom:1px solid #999">`:''}</div></div>`}
 // Keep the app in sync with admin-side changes (status, wallet, level, notifications, etc.)
 // without needing a manual refresh or re-login. Refreshes quietly in the background, and only
