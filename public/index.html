@@ -113,6 +113,14 @@ const LS=(()=>{const m={};try{localStorage.setItem('__t','1');localStorage.remov
 const $=(s,r=document)=>r.querySelector(s);
 let PH='',T=LS.getItem('t'),ME=null,view='home',sub=null,tab='login',msg='';
 const peso=n=>'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pesoWhole=n=>'₱'+Math.round(Number(n)||0).toLocaleString('en-PH');
+// Each month's repayment is rounded to the nearest whole peso (no cents). Rounding every month the same way
+// would drift from the true total, so whatever that rounding adds up to or loses gets corrected in the very
+// last installment instead — every other month is the same round number.
+function repaySchedule(a){
+ const term=a.term_months,base=Math.round(a.total/term),last=Math.round(a.total)-base*(term-1);
+ return Array.from({length:term},(_,i)=>i<term-1?base:last);
+}
 async function api(path,opt={}){
   const h={...(opt.headers||{})};if(T)h.Authorization='Bearer '+T;
   if(opt.body&&!(opt.body instanceof FormData)){h['Content-Type']='application/json';opt.body=JSON.stringify(opt.body)}
@@ -163,8 +171,9 @@ function home(){return `<div class="hero2"><div class="c1"></div><div class="c2"
 function statusLabel(s){return {pending:'UNDER REVIEW',approved:'APPROVED',disbursed:'DISBURSED',completed:'COMPLETED',rejected:'REJECTED'}[s]||String(s).toUpperCase()}
 // When staff set a custom status (Review screen, back office), show that in place of the plain status word —
 // same badge spot, just with their chosen text and color (blue/red) instead of the fixed wording.
+const CS_COLORS={red:'#dc2626',green:'#16a34a',blue:'#2563eb'};
 function statusBadge(a){
- if(a.custom_status)return `<span class="stbadge" style="background:${a.custom_status_color==='red'?'#dc2626':'#2563eb'}">${esc(a.custom_status).toUpperCase()}</span>`;
+ if(a.custom_status)return `<span class="stbadge" style="background:${CS_COLORS[a.custom_status_color]||CS_COLORS.blue}">${esc(a.custom_status).toUpperCase()}</span>`;
  return `<span class="stbadge ${a.status==='rejected'?'rej':a.status==='completed'?'done':''}">${statusLabel(a.status)}</span>`;
 }
 function statusDesc(a){if(!a)return'';return {pending:'Your application is being reviewed. We will notify you once a decision is made.',approved:'Your loan is approved and will be sent to your bank account on file shortly.',disbursed:'Your loan has been sent to your bank account on file.',completed:'This loan has been fully repaid. Thank you.',rejected:'Your application was not approved this time.'}[a.status]||''}
@@ -179,7 +188,7 @@ function walletLoanCard(a){return `<div class="card"><div style="display:flex;ju
  <div class="kvline"><span class="mute">Order number</span><b>${a.order_no||'—'}</b></div>
  <div class="kvline"><span class="mute">Loan amount</span><b>${peso(a.amount)}</b></div>
  <div class="kvline"><span class="mute">Borrowing Time</span><b>${a.term_months} Months</b></div>
- <div class="kvline"><span class="mute">Repayment per installment</span><b>${peso(a.monthly)}</b></div>
+ <div class="kvline"><span class="mute">Repayment per installment</span><b>${pesoWhole(repaySchedule(a)[0])}</b></div>
  <button class="btn" style="background:#f2b84b;color:#5a0a12;margin-top:14px" onclick="go('contract')">View Contract</button></div>`}
 function loanPageCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">Order: ${a.order_no||'—'}</span>${statusBadge(a)}</div>
  <div class="stat3" style="margin:12px 0"><div><b>${a.annual_rate}%</b><br><span class="mute">Interest/Mo</span></div><div><b>${a.term_months}</b><br><span class="mute">Months</span></div><div><b>${peso(a.amount)}</b><br><span class="mute">Amount</span></div></div>
@@ -195,7 +204,7 @@ function modalHTML(){if(!MODAL)return'';
   <div class="kvline"><span class="mute">Order number</span><b>${a.order_no||'—'}</b></div>
   <div class="kvline"><span class="mute">Principal amount</span><b>${peso(a.amount)}</b></div>
   <div class="kvline"><span class="mute">Borrowing tenure</span><b>${a.term_months} Months</b></div>
-  <div class="kvline"><span class="mute">Monthly installment</span><b>${peso(a.monthly)}</b></div></div></div></div>`}
+  <div class="kvline"><span class="mute">Monthly installment</span><b>${pesoWhole(repaySchedule(a)[0])}</b></div></div></div></div>`}
  if(MODAL==='withdraw'){
   return `<div class="modalbg" onclick="closeModal()"><div class="modalcard" onclick="event.stopPropagation()"><div class="modalhd" style="justify-content:center">Wallet withdrawal</div>
   <div class="modalbody"><input id="mwa" type="number" placeholder="Enter the withdrawal amount">
@@ -234,7 +243,7 @@ let LT=null;
 function pickTerm(t){LT=t;calc()}
 function calc(){if(!$('#am'))return;const amt=+$('#am').value,c=ME.config;if(!c.terms.includes(LT))LT=c.terms[0];
  const tot=amt*(1+c.rate/100*LT),pay=tot/LT;
- $('#statAmt').textContent=peso(amt);$('#statPay').textContent=peso(Math.round(pay));$('#statTerm').textContent=LT;
+ $('#statAmt').textContent=peso(amt);$('#statPay').textContent=pesoWhole(pay);$('#statTerm').textContent=LT;
  document.querySelectorAll('.termbtn').forEach(b=>b.classList.toggle('on',+b.dataset.t===LT))}
 function onSlide(){const v=+$('#am').value;if($('#amBig'))$('#amBig').value=v;calc()}
 function typeAmt(){const c=ME.config;const n=Math.round(+$('#amBig').value);const v=isNaN(n)?c.min:Math.max(c.min,Math.min(c.max,n));if($('#am'))$('#am').value=v;calc()}
@@ -245,13 +254,11 @@ function demoDisburse(){}
 
 
 const AV='<svg viewBox="0 0 48 48" width="46" height="46"><circle cx="24" cy="24" r="23" fill="#c9d3d9" stroke="#ffffff88" stroke-width="2"/><circle cx="24" cy="19" r="8" fill="#fff"/><path d="M8 42c2-10 10-13 16-13s14 3 16 13z" fill="#fff"/></svg>';
-function wallet(){const a=ME.applications[0],bal=ME.balance||0,pend=(ME.withdrawals||[]).find(w=>w.status==='pending'),withdrawn=(ME.withdrawals||[]).filter(w=>w.status==='paid').reduce((t,w)=>t+w.amount,0);
+function wallet(){const a=ME.applications[0],bal=ME.balance||0;
  return `<div class="wrap" style="padding-top:16px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div>
  <div class="card" style="background:var(--g);color:#fff;display:flex;gap:14px;align-items:center;padding:14px">${AV}<div><b style="font-size:18px">Account</b><div style="font-size:13px;opacity:.85">${ME.phone}</div></div></div>
  <div class="card" style="text-align:center;padding:26px 16px"><div class="mute" style="letter-spacing:.06em">ACCOUNT BALANCE</div><div class="big" style="font-family:Georgia,serif;margin:8px 0">${peso(bal)}</div>${a?`<span class="latest">Latest Loan: ${peso(a.amount)}</span>`:''}</div>
- <div style="display:flex;gap:12px"><div class="card" style="flex:1"><div class="mute">Withdrawal (₱)</div><b>${peso(withdrawn)}</b></div><div class="card" style="flex:1"><div class="mute">Wallet (₱)</div><b>${peso(bal)}</b></div></div>
  <button class="btn" onclick="openModal('withdraw')">Withdrawal</button>
- ${pend?`<div class="card" style="margin-top:14px"><p class="mute">You have a pending request for ${peso(pend.amount)}.</p></div>`:''}
  ${a?walletLoanCard(a):`<div class="card"><p style="margin:0 0 10px">No loan yet. Apply to see your progress here.</p><button class="btn" onclick="go('loan')">Apply for a loan</button></div>`}
  ${(ME.withdrawals||[]).length?`<div class="card wlist"><b style="padding:0 4px">Withdrawal history</b>${ME.withdrawals.map(w=>`<div class="row" style="cursor:default"><span>${peso(w.amount)}</span><span class="status s-${w.status==='paid'?'approved':w.status==='rejected'?'rejected':'pending'}">${w.status.toUpperCase()}</span></div>`).join('')}</div>`:''}
  </div>${foot()}`}
@@ -284,7 +291,7 @@ function levelGauge(level){level=Math.max(1,Math.min(5,level||1));const cx=100,c
  ${ticks}
  <line x1="${cx}" y1="${cy}" x2="${nEnd[0].toFixed(1)}" y2="${nEnd[1].toFixed(1)}" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
  <circle cx="${cx}" cy="${cy}" r="5" fill="#fff"/>
- <text x="${cx}" y="${cy-26}" font-size="26" font-weight="800" fill="#fff" text-anchor="middle" font-family="Georgia,serif">Lv ${level}</text>
+ <text x="${cx}" y="${cy-26}" font-size="26" font-weight="800" fill="#fff" text-anchor="middle" font-family="Georgia,serif">Sc ${level}</text>
  <text x="${cx}" y="${cy-8}" font-size="10" fill="#ffffffbb" text-anchor="middle" font-family="Arial">of 5</text>
  </svg>`}
 function account(){const lvl=ME.level||1;
@@ -300,11 +307,12 @@ function repay(){const a=ME.applications[0],live=a&&['approved','disbursed'].inc
  if(!live)return bar('My Repayment Period','account')+`<div class="wrap"><div class="card">Your repayment schedule appears here after your loan is approved.</div></div>`;
  const base=a.status==='disbursed'&&a.decided_at?new Date(String(a.decided_at).replace(' ','T')+'Z'):null;
  const interestPer=+((a.total-a.amount)/a.term_months).toFixed(2),principalPer=+(a.amount/a.term_months).toFixed(2);
+ const sched=repaySchedule(a);
  const rows=Array.from({length:a.term_months},(_,i)=>{let d='Date set when the loan is released';if(base){const x=new Date(base);x.setMonth(x.getMonth()+i+1);d=x.toLocaleDateString('en-PH',{day:'2-digit',month:'short',year:'numeric'})}
   return `<div class="card" style="display:flex;gap:12px"><div class="repicon">🤝</div><div style="flex:1"><b>${d}</b>
    <div class="kvline"><span class="mute">Interest (${a.annual_rate}%)</span><span>${peso(interestPer)}</span></div>
    <div class="kvline"><span class="mute">Principal</span><span>${peso(principalPer)}</span></div>
-   <div class="kvline"><span class="mute">Repayment Amount</span><b style="color:var(--r2)">${peso(a.monthly)}</b></div></div></div>`}).join('');
+   <div class="kvline"><span class="mute">Repayment Amount</span><b style="color:var(--r2)">${pesoWhole(sched[i])}</b></div></div></div>`}).join('');
  return bar('My Repayment Period','account')+`<div class="wrap" style="padding-top:10px">${rows}</div>`}
 function profile(){return bar('My profile','account')+`<div class="wrap"><div class="card" style="background:var(--g);color:#fff">Complete the information to apply for a loan</div>
  <div class="card">${[['id','Valid ID'],['personal','Personal info'],['bank','Bank account'],['signature','Signature']].map(([k,l])=>`<div class="row" onclick="go('${k}')"><b>${l}</b>${done(k)}<span>›</span></div>`).join('')}</div>
@@ -356,7 +364,7 @@ function contract(){const a=ME.applications[0],d=ME.profile,c=ME.config;
  if(!a)return bar('My contract','account')+`<div class="wrap"><div class="card">Your contract appears here after you submit a loan application.</div></div>`;
  return bar('My contract','account')+`<div class="wrap"><div class="card contract"><b>LOAN AGREEMENT</b><p>
  Order number: ${a.order_no||'—'}<br>Lender: ${c.lender} (SEC No. ${c.sec})<br>Borrower: ${d.id?.name||''}<br>ID number: ${d.id?.id_no||''}<br>Mobile: ${ME.phone}<br>
- Loan amount: ${peso(a.amount)}<br>Term: ${a.term_months} months<br>Interest: ${a.annual_rate}% per month, flat<br>Repayment per installment: ${peso(a.monthly)}<br>Total to repay: ${peso(a.total)}<br>Disbursed to: ${d.bank?.bank_name||''} ${d.bank?d.bank.account_no.slice(-4).padStart(d.bank.account_no.length,'•'):''}</p>
+ Loan amount: ${peso(a.amount)}<br>Term: ${a.term_months} months<br>Interest: ${a.annual_rate}% per month, flat<br>Repayment per installment: ${pesoWhole(repaySchedule(a)[0])}${a.term_months>1?` (final installment ${pesoWhole(repaySchedule(a)[a.term_months-1])})`:''}<br>Total to repay: ${peso(a.total)}<br>Disbursed to: ${d.bank?.bank_name||''} ${d.bank?d.bank.account_no.slice(-4).padStart(d.bank.account_no.length,'•'):''}</p>
  <h4>1. No upfront fees</h4><p>The Lender does not charge any fee, deposit or payment before the loan is released to the Borrower's bank account.</p>
  <h4>2. Repayment</h4><p>The Borrower repays the total amount above in equal monthly payments.</p>
  <h4>3. Late payment</h4><p>[Lawyer to insert late-payment charge, if any, within the limits set by law.]</p>
