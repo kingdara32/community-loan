@@ -180,13 +180,11 @@ function fmtDate(x){try{const s=String(x||'');return new Date(s.replace(' ','T')
 function walletLoanCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">No: ${a.order_no||'—'}</span>${statusBadge(a)}</div>
  <div class="stat3" style="margin:12px 0"><div><b>${a.annual_rate}%</b><br><span class="mute">Interest/Mo</span></div><div><b>${a.term_months}</b><br><span class="mute">Months</span></div><div><b>${peso(a.amount)}</b><br><span class="mute">Principal</span></div></div>
  ${a.status!=='rejected'?stepper(stepFill(a),['Submit Loan','Approve','Receive Money']):''}
- <p style="margin:16px 0 4px"><b>Status Description</b></p><div class="descbox">${a.note||statusDesc(a)}</div>
  <p style="margin:16px 0 4px"><b>Loan Details</b></p>
  <div class="kvline"><span class="mute">Order number</span><b>${a.order_no||'—'}</b></div>
  <div class="kvline"><span class="mute">Loan amount</span><b>${peso(a.amount)}</b></div>
  <div class="kvline"><span class="mute">Borrowing Time</span><b>${a.term_months} Months</b></div>
- <div class="kvline"><span class="mute">Repayment per installment</span><b>${pesoWhole(repaySchedule(a)[0])}</b></div>
- <button class="btn" style="background:#f2b84b;color:#5a0a12;margin-top:14px" onclick="go('contract')">View Contract</button></div>`}
+ <div class="kvline"><span class="mute">Repayment per installment</span><b>${pesoWhole(repaySchedule(a)[0])}</b></div></div>`}
 function loanPageCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">Order: ${a.order_no||'—'}</span>${statusBadge(a)}</div>
  <div class="stat3" style="margin:12px 0"><div><b>${a.annual_rate}%</b><br><span class="mute">Interest/Mo</span></div><div><b>${a.term_months}</b><br><span class="mute">Months</span></div><div><b>${peso(a.amount)}</b><br><span class="mute">Amount</span></div></div>
  <div style="display:flex;gap:10px"><button class="btn" style="background:#f2b84b;color:#5a0a12;flex:1" onclick="go('contract')">View Contract</button><button class="btn" style="background:#d99a3b;color:#fff;flex:1" onclick="openModal('loanDetails')">Loan Details</button></div>${DEMO&&a.status==='pending'?`<button class="btn alt" style="margin-top:10px" onclick="demoApprove()">Demo: approve this application</button>`:''}${DEMO&&a.status==='approved'?`<button class="btn alt" style="margin-top:10px" onclick="demoDisburse()">Demo: mark as disbursed (sent to bank)</button>`:''}</div>`}
@@ -212,7 +210,7 @@ function modalHTML(){if(!MODAL)return'';
   <div class="nfhd">Notifications<button onclick="closeModal()">✕</button></div>
   <div class="nflist">${NOTIFS.length?NOTIFS.map(n=>`<div class="nfcard"><div class="nfhead"><span class="nficon"></span><span class="nfapp">Assistant Support</span><span class="nftime">${timeAgo(n.created_at)}</span></div><div class="nfmsg">${n.message}</div></div>`).join(''):'<p class="mute" style="margin:16px 4px">No notifications yet.</p>'}</div></div></div>`}
  return ''}
-async function doWithdraw(){try{await api('/withdraw',{method:'POST',body:{amount:$('#mwa').value,pin:$('#mwc').value}});closeModal();await load();go('wallet')}catch(e){$('#mwerr').textContent=e.message}}
+async function doWithdraw(){try{await api('/withdraw',{method:'POST',body:{amount:$('#mwa').value,pin:$('#mwc').value}});closeModal();await load();alert('Withdrawal is processing. Please check in Withdrawal Status.');go('withdrawals')}catch(e){$('#mwerr').textContent=e.message}}
 
 let NOTIFS=[],NOTIF_UNREAD=0;
 function bellHTML(){if(!ME)return'';return `<div class="bellwrap"><button class="bellbtn" onclick="openNotifs()">🔔${NOTIF_UNREAD>0?`<span class="bellbadge">${NOTIF_UNREAD>9?'9+':NOTIF_UNREAD}</span>`:''}</button></div>`}
@@ -257,14 +255,15 @@ function wallet(){const a=ME.applications[0],bal=ME.balance||0;
  <div class="card" style="text-align:center;padding:26px 16px"><div class="mute" style="letter-spacing:.06em">ACCOUNT BALANCE</div><div class="big" style="font-family:Georgia,serif;margin:8px 0">${peso(bal)}</div>${a?`<span class="latest">Latest Loan: ${peso(a.amount)}</span>`:''}</div>
  <button class="btn" onclick="openModal('withdraw')">Withdrawal</button>
  ${a?walletLoanCard(a):`<div class="card"><p style="margin:0 0 10px">No loan yet. Apply to see your progress here.</p><button class="btn" onclick="go('loan')">Apply for a loan</button></div>`}
- ${(ME.withdrawals||[]).length?`<div class="card wlist"><b style="padding:0 4px">Withdrawal history</b>${ME.withdrawals.map(w=>`<div class="row" style="cursor:default"><span>${peso(w.amount)}</span><span class="status s-${w.status==='paid'?'approved':w.status==='rejected'?'rejected':'pending'}">${w.status.toUpperCase()}</span></div>`).join('')}</div>`:''}
  </div>`}
+function wStatusLabel(s){return {paid:'APPROVED',rejected:'REJECTED',failed:'PROCESSING FAILED'}[s]||'PENDING'}
+function wStatusClass(s){return {paid:'approved',rejected:'rejected',failed:'rejected'}[s]||'pending'}
 function withdrawals(){const list=ME.withdrawals||[];
  return bar('Withdrawal Status','account')+`<div class="wrap" style="padding-top:10px">
- ${list.length?list.map(w=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><b>${peso(w.amount)}</b><div class="mute" style="margin-top:2px">${fmtDate(w.created_at)}</div></div><span class="status s-${w.status==='paid'?'approved':w.status==='rejected'?'rejected':'pending'}">${w.status.toUpperCase()}</span></div>`).join(''):`<div class="card">You have no withdrawal requests yet.</div>`}
+ ${list.length?list.map(w=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><b>${peso(w.amount)}</b><div class="mute" style="margin-top:2px">${fmtDate(w.created_at)}</div></div><span class="status s-${wStatusClass(w.status)}">${wStatusLabel(w.status)}</span></div>`).join(''):`<div class="card">You have no withdrawal requests yet.</div>`}
  </div>`}
 function openSupport(){const u=ME.config.support;if(u)window.open(u,'_blank');else alert('This button opens your live chat (WhatsApp, Messenger or Telegram). Set SUPPORT_URL in the real app.')}
-function contact(){const q=[['1. What are the loan terms?','Complete your profile (valid ID, personal info, bank account and signature), then choose an amount and term. You need a valid ID and a bank account under your own name. There is no fee to apply or to receive your loan.'],
+function contact(){const q=[['1. What are the loan terms?','Complete your profile (valid ID, personal info, bank account and signature), then choose an amount and term. You need a valid ID and a bank account under your own name.'],
 ['2. How long does it take to apply?','Registering and completing your profile takes a few minutes. We aim to review applications within 1 business day. Contact customer service for more specific information.'],
 ['3. How do I check my loan?','Open Account, then My Loan. It shows whether your application is pending, approved, released or declined, with the amount, monthly payment and total to repay.'],
 ['4. How do I repay?','Your monthly payment and due dates are in your contract and under My Repayment. Payment instructions are provided when your loan is released. Late charges, if any, are stated in the contract.'],
@@ -274,19 +273,19 @@ function contact(){const q=[['1. What are the loan terms?','Complete your profil
  <div style="text-align:center;margin-bottom:14px"><span style="display:inline-block;background:#e8eef6;color:#1d4ed8;font-weight:700;font-size:13px;padding:8px 18px;border-radius:99px">Service time is ${ME.config.hours}</span></div>
  ${q.map(([a,b])=>`<div class="card faq"><b>${a}</b><p>${b}</p></div>`).join('')}</div>`}
 
-// The account's real tier is still 1–5 (computed server-side from activity), but it's shown here as a
-// credit-score-style number: 1→100, 2→300, 3→500, 4→700, 5→900.
-const scoreOf=level=>100+(Math.max(1,Math.min(5,level||1))-1)*200;
-function levelGauge(level){level=Math.max(1,Math.min(5,level||1));const cx=100,cy=108,r=82,startA=180,endA=0;
+// The account's score is normally a flat, automatic 500 (computed server-side) unless staff set it to
+// something else by hand — shown here as a credit-score-style number from 100 to 900, in steps of 100.
+const scoreOf=level=>100*Math.max(1,Math.min(9,level||5));
+function levelGauge(level){level=Math.max(1,Math.min(9,level||5));const cx=100,cy=108,r=82,startA=180,endA=0;
  const pol=(rad)=>{const t=rad*Math.PI/180;return[cx+r*Math.cos(t),cy-r*Math.sin(t)]};
- const curA=startA-(level-1)/4*(startA-endA);
+ const curA=startA-(level-1)/8*(startA-endA);
  const[x1,y1]=pol(startA),[x2,y2]=pol(endA),[xc,yc]=pol(curA);
  const track=`M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
  const prog=`M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 0 1 ${xc.toFixed(1)} ${yc.toFixed(1)}`;
- let ticks='';for(let i=1;i<=5;i++){const a=startA-(i-1)/4*(startA-endA);
+ let ticks='';for(let i=1;i<=9;i++){const a=startA-(i-1)/8*(startA-endA);
   const pin=(rr)=>{const t=a*Math.PI/180;return[cx+rr*Math.cos(t),cy-rr*Math.sin(t)]};
   const[tx1,ty1]=pin(r-9),[tx2,ty2]=pin(r+2),[lx,ly]=pin(r+17);
-  ticks+=`<line x1="${tx1.toFixed(1)}" y1="${ty1.toFixed(1)}" x2="${tx2.toFixed(1)}" y2="${ty2.toFixed(1)}" stroke="#fff" stroke-width="2.5" opacity=".9"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="7.5" fill="#fff" opacity=".9" text-anchor="middle" font-family="Arial" dominant-baseline="middle">${scoreOf(i)}</text>`}
+  ticks+=`<line x1="${tx1.toFixed(1)}" y1="${ty1.toFixed(1)}" x2="${tx2.toFixed(1)}" y2="${ty2.toFixed(1)}" stroke="#fff" stroke-width="2.5" opacity=".9"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="6.5" fill="#fff" opacity=".9" text-anchor="middle" font-family="Arial" dominant-baseline="middle">${scoreOf(i)}</text>`}
  const[nx,ny]=pol(curA-0),nEnd=(()=>{const t=curA*Math.PI/180;return[cx+(r-14)*Math.cos(t),cy-(r-14)*Math.sin(t)]})();
  return `<svg viewBox="0 0 200 140" width="160" height="112" style="overflow:visible">
  <path d="${track}" fill="none" stroke="#ffffff55" stroke-width="9" stroke-linecap="round"/>
@@ -319,10 +318,12 @@ function repay(){const a=ME.applications[0],live=a&&['approved','disbursed'].inc
    <div class="kvline"><span class="mute">Principal</span><span>${peso(principalPer)}</span></div>
    <div class="kvline"><span class="mute">Repayment Amount</span><b style="color:var(--r2)">${pesoWhole(sched[i])}</b></div></div></div>`}).join('');
  return bar('My Repayment Period','account')+`<div class="wrap" style="padding-top:10px">${rows}</div>`}
-function profile(){return bar('My profile','account')+`<div class="wrap"><div class="card" style="background:var(--g);color:#fff">Complete the information to apply for a loan</div>
- <div class="card">${[['id','Valid ID'],['personal','Personal info'],['bank','Bank account'],['signature','Signature']].map(([k,l])=>`<div class="row" onclick="go('${k}')"><b>${l}</b>${done(k)}<span>›</span></div>`).join('')}</div>
- <div class="err" id="perr"></div><button class="btn" onclick="submitProfile()">Submit</button></div>`}
-function submitProfile(){if(['id','personal','bank','signature'].every(k=>ME.profile[k]))go('loan');else $('#perr').textContent='Please complete all four steps first.'}
+function profile(){const locked=ME.profileLocked;
+ return bar('My profile','account')+`<div class="wrap"><div class="card" style="background:var(--g);color:#fff">${locked?'Your profile is submitted and locked. Contact support if something needs to change.':'Complete the information to apply for a loan'}</div>
+ <div class="card">${[['id','Valid ID'],['personal','Personal info'],['bank','Bank account'],['signature','Signature']].map(([k,l])=>locked?`<div class="row" style="cursor:default"><b>${l}</b>${done(k)}</div>`:`<div class="row" onclick="go('${k}')"><b>${l}</b>${done(k)}<span>›</span></div>`).join('')}</div>
+ <div class="err" id="perr"></div>${locked?'':`<button class="btn" onclick="submitProfile()">Submit</button>`}</div>`}
+async function submitProfile(){if(!['id','personal','bank','signature'].every(k=>ME.profile[k])){$('#perr').textContent='Please complete all four steps first.';return}
+ try{await api('/profile/submit',{method:'POST',body:{}});await load();go('loan')}catch(e){$('#perr').textContent=e.message}}
 
 // Bank account fields: typed only, no pasting/dropping text in (covers right-click paste, Ctrl+V, and
 // long-press paste on mobile — all fire the same "paste" event).
