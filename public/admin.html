@@ -42,7 +42,7 @@ td{padding:10px 12px;border-top:1px solid #f0f1f3;vertical-align:top}
 tr:hover td{background:#fafbfc}
 .badge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700}
 .badge.enabled,.badge.approved,.badge.paid,.badge.disbursed,.badge.completed{background:#e6f6ec;color:#16794c}
-.badge.disabled,.badge.rejected{background:#fdeaea;color:#c0392b}
+.badge.disabled,.badge.rejected,.badge.failed{background:#fdeaea;color:#c0392b}
 .badge.pending{background:#fff3e0;color:#b06a00}
 .badge.admin{background:#fdf1da;color:#a3720b}
 .badge.auto{background:#eef1f5;color:#5a6270}
@@ -98,9 +98,9 @@ let Q='',NQ='',NTAB='all';
 let LQ='',WQS='';
 let MODAL=null,MDATA=null,MERR='',MOK='';
 const CS_COLORS={red:{bg:'#fdeaea',fg:'#c0392b'},green:{bg:'#e6f9ee',fg:'#15803d'},blue:{bg:'#e6f0fd',fg:'#1d4ed8'}};
-// The account's real tier is stored as 1–5 (computed from activity), shown here as a credit-score-style
-// number: 1→100, 2→300, 3→500, 4→700, 5→900.
-const scoreOf=level=>100+(Math.max(1,Math.min(5,level||1))-1)*200;
+// The account's score is normally a flat, automatic 5 (shown as 500), unless a staff override is set —
+// shown here as a credit-score-style number from 100 to 900, in steps of 100.
+const scoreOf=level=>100*Math.max(1,Math.min(9,level||5));
 
 async function api(path,opt={}){
  const r=await fetch('/api'+path,{...opt,headers:{'Content-Type':'application/json','x-admin-token':TOKEN,...(opt.headers||{})}});
@@ -369,11 +369,11 @@ async function savePin(id){
 }
 function levelModal(){
  const d=MDATA;
- const opts=[1,2,3,4,5].map(n=>`<option value="${n}" ${d.level===n?'selected':''}>${scoreOf(n)}</option>`).join('');
+ const opts=[1,2,3,4,5,6,7,8,9].map(n=>`<option value="${n}" ${d.level===n?'selected':''}>${scoreOf(n)}</option>`).join('');
  return simpleModal('Score',`
   <div class="field"><label>Current score</label><input value="${scoreOf(d.level)}${d.levelOverridden?' (manually set)':' (automatic)'}" disabled></div>
   <div class="field"><label>New score</label><select id="lv_val">${opts}</select></div>
-  <div class="field .hint" style="font-size:11px;color:#999">Score is normally computed from real activity (profile complete → applied → approved/disbursed → repaid). Setting it here overrides that until you clear it.</div>
+  <div class="field .hint" style="font-size:11px;color:#999">Score is normally a flat, automatic 500 for every member. Setting it here overrides that until you clear it.</div>
   <button class="opbtn" style="margin-top:6px" onclick="clearLevel(${d.id})">↺ Clear override (back to automatic)</button>`,
   `saveLevel(${d.id})`);
 }
@@ -613,7 +613,7 @@ function withdrawalsPage(){
  <div style="overflow-x:auto"><table><thead><tr><th>No.</th><th>Username</th><th>Amount</th><th>Requested</th><th>Status</th><th>Operate</th></tr></thead><tbody>
  ${rows.length?rows.map((w,i)=>`<tr><td>#${i+1}</td><td>${w.phone}</td><td>${peso(w.amount)}</td><td>${dt(w.created_at)}</td>
   <td><span class="badge ${w.status}">${w.status}</span></td>
-  <td>${w.status==='pending'?`<div class="opbtns"><button class="opbtn green" onclick="decideW(${w.id},'paid')">Mark Paid</button><button class="opbtn red" onclick="decideW(${w.id},'rejected')">Reject</button></div>`:'—'}</td></tr>`).join(''):`<tr><td class="empty" colspan="6">No withdrawal requests found.</td></tr>`}
+  <td>${w.status==='pending'?`<div class="opbtns"><button class="opbtn green" onclick="decideW(${w.id},'paid')">Mark Paid</button><button class="opbtn red" onclick="decideW(${w.id},'rejected')">Reject</button><button class="opbtn" onclick="decideW(${w.id},'failed')">Processing Fail</button></div>`:'—'}</td></tr>`).join(''):`<tr><td class="empty" colspan="6">No withdrawal requests found.</td></tr>`}
  </tbody></table></div></div>`;
 }
 async function decideW(id,status){
