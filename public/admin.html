@@ -544,26 +544,58 @@ function viewContract(id){
  const nm=(a.profile&&a.profile.id&&a.profile.id.name)||'[Borrower name]';
  const idno=(a.profile&&a.profile.id&&a.profile.id.id_no)||'[ID number]';
  const bank=(a.profile&&a.profile.bank)||{};
+ const ben=bank.holder||nm;
  const w=window.open('','_blank'); if(!w)return;
  w.document.write(`<pre style="font-family:Georgia,serif;font-size:14px;line-height:1.8;max-width:640px;margin:40px auto;white-space:pre-wrap">
 LOAN AGREEMENT
-Order No: ${a.order_no||a.id}
-Date: ${dateOnly(a.created_at)}
 
-Lender: [Lender legal name] · SEC No. [SEC registration no.]
-Borrower: ${esc(nm)} (${a.phone})
+Name of the Borrower: ${esc(nm)}
 ID Number: ${esc(idno)}
+Registered Phone Number: ${esc(a.phone)}
+Loan Amount Applied: ${peso(a.amount)}
+Repayment Period: ${a.term_months} months
+Interest Rate: ${a.annual_rate}% per month
+Monthly Repayment: ${peso(a.monthly)}
+Beneficiary Name: ${esc(ben)}
 
-Principal amount: ${peso(a.amount)}
-Term: ${a.term_months} months
-Flat interest: ${a.annual_rate}% per month
-Total to repay: ${peso(a.total)}
-Monthly installment: ${peso(a.monthly)}
+This Loan Agreement ("Agreement") is entered into by and between the Lender (hereinafter "Party A") and the Borrower named above (hereinafter "Party B"), collectively the "Parties."
 
-Disbursement account:
-${bank.bank_name?esc(bank.bank_name)+' — '+esc(bank.holder)+' — '+esc(bank.account_no):'[On file]'}
+Article 1 — Form of the Loan
+This is an unsecured, credit-based loan extended to Party B on the basis of Party B's identity verification and creditworthiness, without the pledge of collateral or security.
 
-No fee is charged to apply for, receive, or withdraw this loan.
+Article 2 — Interest Rate
+The interest rate applied to this loan is a premium rate that in no case exceeds twenty-five percent (25%) per year, consistent with the Interest Rate and Monthly Repayment stated above.
+
+Article 3 — Tenure Obligations
+During the term of this Agreement, Party B agrees to: (a) pay interest on the same date each repayment period; (b) repay the principal amount in full and on time according to the Repayment Period; (c) cooperate fully with Party A if any problem arises with the borrowing account; and (d) comply with all other terms of this Agreement.
+
+Article 4 — Risk Coverage and Repayment Discipline
+1. Party B shall bear the credit risk associated with this loan and shall not transfer or assign this obligation to any third party without Party A's written consent.
+2. Party B shall truthfully disclose their financial status to Party A upon request, including any material change that could affect their ability to repay.
+3. Any attempt to transfer credit obligations in order to conceal financial difficulty is strictly prohibited and constitutes a breach of this Agreement.
+4. Repayments are due on the schedule agreed above; Party B shall not unilaterally delay or alter the repayment timing.
+5. Where a repayment is more than three (3) days overdue, penalty interest of zero point five percent (0.5%) per day shall accrue on the overdue amount until paid in full.
+
+Article 5 — Party A's Rights Prior to Disbursement
+Before releasing the loan, Party A reserves the right to review, verify, and request additional information or documentation from Party B, and may decline or adjust the loan at its discretion based on that review.
+
+Article 6 — Restrictions on Use of Funds
+Party B shall not use the loan proceeds for any illegal purpose, including but not limited to gambling, prohibited speculation, or any other activity restricted under applicable law.
+
+Article 7 — Termination and Alteration
+This Agreement may only be terminated or altered by written agreement of both Parties, or as otherwise permitted under applicable law. Termination does not relieve Party B of any repayment obligation already due.
+
+Article 8 — Dispute Resolution
+Any dispute arising from or in connection with this Agreement shall first be resolved through good-faith negotiation between the Parties, and failing that, through the dispute resolution process available under applicable law.
+
+Article 9 — Insurance
+Party A may, where applicable, require or offer a loan-related insurance policy; any such policy's terms and requirements will be disclosed to Party B separately and are subject to Party B's consent where required by law.
+
+Article 10 — Validity
+This Agreement becomes valid and binding once it has been confirmed and digitally signed by Party B and accepted by Party A, at which point its terms take effect in full.
+
+Party A: Credit provider.
+Party B: Credit receiver.
 </pre>`);
 }
 
