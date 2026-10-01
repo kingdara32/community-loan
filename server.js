@@ -43,6 +43,10 @@ try { db.exec("ALTER TABLE applications ADD COLUMN custom_status_color TEXT"); }
 try { db.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'enabled'"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN level_override INTEGER"); } catch (e) {}
+// Once a member submits their profile (ID, personal info, bank account, signature all complete), it's
+// locked — they can no longer edit any of those four sections themselves. Staff can still correct a
+// locked profile from the admin back office (that uses a separate, admin-only save path).
+try { db.exec("ALTER TABLE users ADD COLUMN profile_locked INTEGER DEFAULT 0"); } catch (e) {}
 db.exec(`CREATE TABLE IF NOT EXISTS admins(id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, pass_hash TEXT NOT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP);`);
 // Optional: set ADMIN_USER / ADMIN_PASSWORD env vars to create (or reset the password of) a staff login on boot.
@@ -160,27 +164,21 @@ function adminSaveSection(uid, section, patch) {
     .run(uid, section, JSON.stringify(d));
 }
 
-// Level reflects real activity only (profile completed, applied, approved/disbursed, fully repaid) —
-// never a number anyone can raise by paying, and never used to gate or upsell anything. Staff can still
-// correct it by hand (users.level_override) for the rare case the computed value is wrong or needs fixing —
-// that override, when set, simply wins over the computed value.
+// Score (1-9, shown to the member as 100-900) is normally just a flat, automatic 5 (500) for everyone —
+// it never moves on its own and is never used to gate or upsell anything. Staff correct it by hand
+// (users.level_override) when a member should show a different value; that override, when set, simply
+// wins over the automatic 5.
 function levelOf(profile, apps, override) {
   if (override !== undefined && override !== null) return override;
-  const complete = ['id', 'personal', 'bank', 'signature'].every((k) => profile[k]);
-  let lvl = 1;
-  if (complete) lvl = 2;
-  if (apps.length) lvl = 3;
-  if (apps.some((a) => ['approved', 'disbursed', 'completed'].includes(a.status))) lvl = 4;
-  if (apps.some((a) => a.status === 'completed')) lvl = 5;
-  return lvl;
+  return 5;
 }
 app.get('/api/me', auth, (req, res) => {
-  const u = db.prepare('SELECT phone, pin_hash, level_override FROM users WHERE id=?').get(req.uid);
+  const u = db.prepare('SELECT phone, pin_hash, level_override, profile_locked FROM users WHERE id=?').get(req.uid);
   const apps = db.prepare('SELECT * FROM applications WHERE user_id=? ORDER BY id DESC').all(req.uid);
   const withdrawals = db.prepare('SELECT * FROM withdrawals WHERE user_id=? ORDER BY id DESC').all(req.uid);
   const profile = loadProfile(req.uid);
   res.json({ phone: u.phone, profile, applications: apps, withdrawals, balance: balanceOf(req.uid),
-    hasPin: !!u.pin_hash, level: levelOf(profile, apps, u.level_override),
+    hasPin: !!u.pin_hash, level: levelOf(profile, apps, u.level_override), profileLocked: !!u.profile_locked,
     config: { lender: cfg.LENDER_NAME, sec: cfg.SEC_NO, rate: cfg.RATE, min: cfg.MIN_AMOUNT, max: cfg.MAX_AMOUNT, terms: cfg.TERMS, hours: cfg.SUPPORT_HOURS, support: cfg.SUPPORT_URL } });
 });
 
@@ -192,6 +190,8 @@ app.post('/api/upload', auth, upload.single('file'), (req, res) => {
 app.put('/api/profile/:section', auth, (req, res) => {
   const s = req.params.section, fields = SECTIONS[s];
   if (!fields) return res.status(404).json({ error: 'Unknown section.' });
+  const locked = db.prepare('SELECT profile_locked FROM users WHERE id=?').get(req.uid);
+  if (locked && locked.profile_locked) return res.status(403).json({ error: 'Your profile is submitted and can no longer be edited. Contact support if something needs to change.' });
   const d = {};
   for (const f of fields) {
     const v = String((req.body || {})[f] ?? '').trim();
@@ -210,6 +210,15 @@ app.put('/api/profile/:section', auth, (req, res) => {
   res.json({ ok: true });
 });
 
+// Locks the profile once all four sections are complete, so the member can't come back and edit their
+// ID, personal info, bank account or signature afterward. Staff can still fix a locked profile from the
+// admin back office (Checking data), which uses its own save path and ignores this lock.
+app.post('/api/profile/submit', auth, (req, res) => {
+  const profile = loadProfile(req.uid);
+  if (!['id', 'personal', 'bank', 'signature'].every((k) => profile[k])) return res.status(400).json({ error: 'Please complete all four steps first.' });
+  db.prepare('UPDATE users SET profile_locked=1 WHERE id=?').run(req.uid);
+  res.json({ ok: true });
+});
 app.post('/api/apply', auth, (req, res) => {
   const amount = Number(req.body.amount), term = Number(req.body.term);
   const p = loadProfile(req.uid);
@@ -379,7 +388,7 @@ app.put('/api/admin/members/:id/level', admin, (req, res) => {
   let val = null;
   if (raw !== null && raw !== undefined && raw !== '') {
     val = Number(raw);
-    if (!Number.isInteger(val) || val < 1 || val > 5) return res.status(400).json({ error: 'Level must be 1 to 5.' });
+    if (!Number.isInteger(val) || val < 1 || val > 9) return res.status(400).json({ error: 'Score must be 100 to 900.' });
   }
   db.prepare('UPDATE users SET level_override=? WHERE id=?').run(val, uid);
   res.json({ ok: true, level: val });
@@ -441,7 +450,7 @@ app.get('/api/admin/withdrawals', admin, (req, res) => {
 });
 app.post('/api/admin/withdrawals/:id/decision', admin, (req, res) => {
   const status = req.body && req.body.status;
-  if (!['paid', 'rejected'].includes(status)) return res.status(400).json({ error: 'Bad status' });
+  if (!['paid', 'rejected', 'failed'].includes(status)) return res.status(400).json({ error: 'Bad status' });
   db.prepare('UPDATE withdrawals SET status=?, decided_at=CURRENT_TIMESTAMP WHERE id=?').run(status, req.params.id);
   // No automatic notification — staff tell the member if needed, from Notifications.
   res.json({ ok: true });
