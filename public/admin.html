@@ -95,6 +95,7 @@ let TOKEN=localStorage.getItem('admin_token')||'';
 let PAGE='dashboard',STATS={members:0,pendingLoans:0,pendingWithdrawals:0,totalLoans:0};
 let MEMBERS=[],APPS=[],WDRAWS=[],NOTIFS=[],ADMINS=[],LOGINERR='';
 let Q='',NQ='',NTAB='all';
+let LQ='',WQS='';
 let MODAL=null,MDATA=null,MERR='',MOK='';
 
 async function api(path,opt={}){
@@ -354,12 +355,12 @@ function pinModal(){
  const d=MDATA;
  return simpleModal('Withdrawal Code',`
   <div class="field"><label>New withdrawal code (4–6 digits)</label><input id="pin_val" inputmode="numeric" placeholder="e.g. 4321"></div>
-  <div class="field .hint" style="font-size:11px;color:#999">Only staff can set this. The member sees it appear in their notification bell — never typed in by them.</div>`,
+  <div class="field .hint" style="font-size:11px;color:#999">Only staff can set this. It's single-use — once the member withdraws with it, it's cleared and you'll need to set a new one. Tell the member the new code yourself (e.g. from Notifications); nothing is sent automatically.</div>`,
   `savePin(${d.id})`);
 }
 async function savePin(id){
  try{ await api(`/admin/members/${id}/pin`,{method:'PUT',body:JSON.stringify({pin:$('#pin_val').value.trim()})});
-  MOK='Code set. Member notified.';await loadMembers();render();
+  MOK='Code set. Remember to tell the member — nothing is sent automatically.';await loadMembers();render();
  }catch(e){MERR=e.message;render()}
 }
 function levelModal(){
@@ -428,22 +429,32 @@ function simpleModal(title,bodyHTML,saveCall){
 }
 
 // ---------- Borrowing List ----------
+function loanMatches(a,q){
+ if(!q)return true;
+ const nm=((a.profile&&a.profile.id&&a.profile.id.name)||'').toLowerCase();
+ return nm.includes(q)||(a.phone||'').toLowerCase().includes(q);
+}
+function searchLoans(){LQ=$('#lq').value.trim();render()}
 function loansPage(){
- const rows=APPS.filter(a=>MRANGE==='all'||within(a.created_at,MRANGE));
+ const q=LQ.toLowerCase();
+ const rows=APPS.filter(a=>(MRANGE==='all'||within(a.created_at,MRANGE))&&loanMatches(a,q));
  return `<div class="card">
  <div class="toolbar" style="justify-content:space-between">
-  <div style="font-size:12.5px;color:#888">${rows.length} application${rows.length===1?'':'s'}</div>
+  <div style="display:flex;gap:8px;align-items:center"><input id="lq" placeholder="Search name or phone" value="${esc(LQ)}" style="width:220px" onkeydown="if(event.key==='Enter')searchLoans()"><button onclick="searchLoans()">Search</button>${LQ?`<button onclick="LQ='';render()" style="background:#eee;color:#333">Clear</button>`:''}<div style="font-size:12.5px;color:#888">${rows.length} application${rows.length===1?'':'s'}</div></div>
   ${dateFilterRow(MRANGE,'setMRange')}
  </div>
  <div style="overflow-x:auto"><table><thead><tr><th>No.</th><th>Order Number</th><th>Name</th><th>Username</th><th>Loan Amount</th><th>Term</th><th>Created</th><th>Status</th><th>Operate</th></tr></thead><tbody>
- ${rows.length?rows.map((a,i)=>loanRow(a,i+1)).join(''):`<tr><td class="empty" colspan="9">No applications yet.</td></tr>`}
+ ${rows.length?rows.map((a,i)=>loanRow(a,i+1)).join(''):`<tr><td class="empty" colspan="9">No applications found.</td></tr>`}
  </tbody></table></div></div>`;
 }
 function loanRow(a,no){
  const nm=(a.profile&&a.profile.id&&a.profile.id.name)||'—';
+ const badge=a.custom_status
+  ?`<span class="badge" style="background:${a.custom_status_color==='red'?'#fdeaea':'#e6f0fd'};color:${a.custom_status_color==='red'?'#c0392b':'#1d4ed8'}">${esc(a.custom_status)}</span>`
+  :`<span class="badge ${a.status}">${a.status}</span>`;
  return `<tr><td>#${no}</td><td>${a.order_no||a.id}</td><td>${esc(nm)}</td><td>${a.phone}</td>
  <td>${peso(a.amount)}</td><td>${a.term_months} mo</td><td>${dateOnly(a.created_at)}</td>
- <td><span class="badge ${a.status}">${a.status}</span></td>
+ <td>${badge}</td>
  <td><div class="opbtns">
  <button class="opbtn blue" onclick="openReview(${a.id})">Review</button>
  <button class="opbtn" onclick="openModal('modifyLoan',{app:${JSON.stringify(a).replace(/"/g,'&quot;')}})">Modify Loan</button>
@@ -469,6 +480,18 @@ function reviewModal(){
   ${idp.front||idp.back||idp.selfie?`<div class="photorow">${['front','back','selfie'].map(f=>idp[f]?`<div class="photobox"><img src="/api/admin/file/${idp[f]}" onclick="viewFile('${idp[f]}')"><div class="lbl">${f}</div></div>`:'').join('')}</div>`:''}
   <div class="field"><label>Note to applicant (optional)</label><textarea id="rv_note" rows="2"></textarea></div>
   <div id="rvmsg" class="msgline"></div>
+  <div class="field" style="border-top:1px solid #eee;padding-top:12px;margin-top:4px">
+   <label>Status (shown to you and to the member, in place of the plain status below — e.g. "Processing", "Waiting 5 min")</label>
+   <div class="row2">
+    <input id="rv_cs" placeholder="Leave blank to show the normal status instead" value="${esc(a.custom_status||'')}">
+    <select id="rv_cscolor">
+     <option value="blue" ${a.custom_status_color!=='red'?'selected':''}>Blue</option>
+     <option value="red" ${a.custom_status_color==='red'?'selected':''}>Red</option>
+    </select>
+   </div>
+   <button class="opbtn blue" style="margin-top:6px" onclick="saveCustomStatus(${a.id})">Set Status</button>
+   <div class="hint" style="font-size:11px;color:#999;margin-top:6px">This only changes the label and color everyone sees. The Approve / Reject / Disburse / Completed buttons below still control what actually happens to the loan.</div>
+  </div>
  </div>
  <div class="modalft">
   <button class="btnmain" onclick="decide(${a.id},'approved')">Approve</button>
@@ -477,6 +500,11 @@ function reviewModal(){
   <button class="btnghost" onclick="decide(${a.id},'completed')">Completed</button>
   <button class="btnghost" onclick="closeModal()">Close</button>
  </div></div></div>`;
+}
+async function saveCustomStatus(id){
+ try{ await api(`/admin/applications/${id}/custom-status`,{method:'PUT',body:JSON.stringify({text:$('#rv_cs').value.trim(),color:$('#rv_cscolor').value})});
+  await loadApps(); const a=APPS.find(x=>x.id===id); openModal('review',a);
+ }catch(e){$('#rvmsg').textContent=e.message;$('#rvmsg').className='msgline err'}
 }
 async function decide(id,status){
  try{ await api(`/admin/applications/${id}/decision`,{method:'POST',body:JSON.stringify({status,note:$('#rv_note')?$('#rv_note').value.trim():''})});
@@ -534,14 +562,20 @@ No fee is charged to apply for, receive, or withdraw this loan.
 }
 
 // ---------- Withdrawal List ----------
+function searchWithdrawals(){WQS=$('#wq').value.trim();render()}
 function withdrawalsPage(){
- const rows=WDRAWS.filter(w=>MRANGE==='all'||within(w.created_at,MRANGE));
+ const q=WQS.toLowerCase();
+ const nameOf=(uid)=>((MEMBERS.find(m=>m.id===uid)||{}).name||'').toLowerCase();
+ const rows=WDRAWS.filter(w=>(MRANGE==='all'||within(w.created_at,MRANGE))&&(!q||(w.phone||'').toLowerCase().includes(q)||nameOf(w.user_id).includes(q)));
  return `<div class="card">
- <div class="toolbar" style="justify-content:space-between"><div style="font-size:12.5px;color:#888">${rows.length} request${rows.length===1?'':'s'}</div>${dateFilterRow(MRANGE,'setMRange')}</div>
+ <div class="toolbar" style="justify-content:space-between">
+  <div style="display:flex;gap:8px;align-items:center"><input id="wq" placeholder="Search name or phone" value="${esc(WQS)}" style="width:220px" onkeydown="if(event.key==='Enter')searchWithdrawals()"><button onclick="searchWithdrawals()">Search</button>${WQS?`<button onclick="WQS='';render()" style="background:#eee;color:#333">Clear</button>`:''}<div style="font-size:12.5px;color:#888">${rows.length} request${rows.length===1?'':'s'}</div></div>
+  ${dateFilterRow(MRANGE,'setMRange')}
+ </div>
  <div style="overflow-x:auto"><table><thead><tr><th>No.</th><th>Username</th><th>Amount</th><th>Requested</th><th>Status</th><th>Operate</th></tr></thead><tbody>
  ${rows.length?rows.map((w,i)=>`<tr><td>#${i+1}</td><td>${w.phone}</td><td>${peso(w.amount)}</td><td>${dt(w.created_at)}</td>
   <td><span class="badge ${w.status}">${w.status}</span></td>
-  <td>${w.status==='pending'?`<div class="opbtns"><button class="opbtn green" onclick="decideW(${w.id},'paid')">Mark Paid</button><button class="opbtn red" onclick="decideW(${w.id},'rejected')">Reject</button></div>`:'—'}</td></tr>`).join(''):`<tr><td class="empty" colspan="6">No withdrawal requests yet.</td></tr>`}
+  <td>${w.status==='pending'?`<div class="opbtns"><button class="opbtn green" onclick="decideW(${w.id},'paid')">Mark Paid</button><button class="opbtn red" onclick="decideW(${w.id},'rejected')">Reject</button></div>`:'—'}</td></tr>`).join(''):`<tr><td class="empty" colspan="6">No withdrawal requests found.</td></tr>`}
  </tbody></table></div></div>`;
 }
 async function decideW(id,status){
