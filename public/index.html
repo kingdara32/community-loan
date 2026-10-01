@@ -170,7 +170,7 @@ function statusBadge(a){
 function statusDesc(a){if(!a)return'';return {pending:'Your application is being reviewed. We will notify you once a decision is made.',approved:'Your loan is approved and will be sent to your bank account on file shortly.',disbursed:'Your loan has been sent to your bank account on file.',completed:'This loan has been fully repaid. Thank you.',rejected:'Your application was not approved this time.'}[a.status]||''}
 function stepFill(a){return {pending:1,approved:2,disbursed:3,completed:3}[a?a.status:'']||0}
 function stepper(fill,labels){return `<div class="steps">${labels.map((l,i)=>`<div class="step ${i<fill?'done':''}"><span class="dot">${i<fill?'✓':''}</span><span class="lbl">${l}</span></div>${i<labels.length-1?`<div class="line ${i<fill-1?'done':''}"></div>`:''}`).join('')}</div>`}
-function fmtDate(x){try{return new Date(String(x||'').replace(' ','T')).toLocaleDateString('en-PH',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return''}}
+function fmtDate(x){try{const s=String(x||'');return new Date(s.replace(' ','T')+(s.includes('Z')?'':'Z')).toLocaleDateString('en-PH',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return''}}
 function walletLoanCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">No: ${a.order_no||'—'}</span>${statusBadge(a)}</div>
  <div class="stat3" style="margin:12px 0"><div><b>${a.annual_rate}%</b><br><span class="mute">Interest/Mo</span></div><div><b>${a.term_months}</b><br><span class="mute">Months</span></div><div><b>${peso(a.amount)}</b><br><span class="mute">Principal</span></div></div>
  ${a.status!=='rejected'?stepper(stepFill(a),['Submit Loan','Approve','Receive Money']):''}
@@ -211,7 +211,7 @@ async function doWithdraw(){try{await api('/withdraw',{method:'POST',body:{amoun
 let NOTIFS=[],NOTIF_UNREAD=0;
 function bellHTML(){if(!ME)return'';return `<div class="bellwrap"><button class="bellbtn" onclick="openNotifs()">🔔${NOTIF_UNREAD>0?`<span class="bellbadge">${NOTIF_UNREAD>9?'9+':NOTIF_UNREAD}</span>`:''}</button></div>`}
 async function openNotifs(){openModal('notifications');if(NOTIF_UNREAD>0){NOTIF_UNREAD=0;try{await api('/notifications/read',{method:'POST',body:{}})}catch{}}}
-function timeAgo(iso){const t=new Date(String(iso||'').replace(' ','T'));const s=Math.max(0,(Date.now()-t.getTime())/1000);
+function timeAgo(iso){const si=String(iso||'');const t=new Date(si.replace(' ','T')+(si.includes('Z')?'':'Z'));const s=Math.max(0,(Date.now()-t.getTime())/1000);
  if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return t.toLocaleDateString('en-PH',{day:'2-digit',month:'short'})}
 function loan(){
   const p=['id','personal','bank','signature'].every(k=>ME.profile[k]),a=ME.applications[0],c=ME.config;
