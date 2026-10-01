@@ -51,7 +51,6 @@ canvas{width:100%;height:260px;background:#e5e7eb;border:2px dashed #9ca3af;touc
 .submitbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:5}.submitbar button{width:100%;height:58px;border:0;background:var(--r2);color:#fff;font:400 21px inherit;letter-spacing:.12em;cursor:pointer}.submitbar button:disabled{opacity:.6}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:14px}.tile{position:relative;display:block;aspect-ratio:1.6;border:2px solid #e5e7eb;border-radius:8px;overflow:hidden;cursor:pointer;background:#f8fafc}.tile img{width:100%;height:100%;object-fit:cover;display:block}
 .tile .ok2{position:absolute;right:6px;top:6px;background:#16a34a;color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
-.nofee{background:#eafaf0;color:#166534;border:1px solid #bbf0cf;border-radius:10px;padding:9px 12px;font-size:12.5px;text-align:center;font-weight:700;margin-bottom:12px}
 .wlist .row{padding:12px 4px}
 .loanhero{position:relative;height:170px;background-size:cover;background-position:center;border-radius:0 0 14px 14px;overflow:hidden}
 .loanhero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,#00000090,#00000010 60%)}
@@ -134,7 +133,6 @@ async function load(){ME=await api('/me');try{const n=await api('/notifications'
 function go(v,s=null){view=v;sub=s;msg='';render()}
 const done=k=>ME?.profile?.[k]?'<span class="tag done">COMPLETE</span>':'<span class="tag">INCOMPLETE</span>';
 const bar=(t,back)=>`<div class="hd">${back?`<button class="back" onclick="go('${back}')">‹</button>`:''}${t}</div>`;
-const foot=()=>`<small class="foot">${ME.config.lender} · SEC No. ${ME.config.sec}</small>`;
 const navb=()=>{const tab={home:'home',loan:'home',wallet:'wallet',contact:'contact'}[view]||'account';return `<nav>${[['home','🏠','Home'],['wallet','₱','Wallet'],['contact','💬','Contact'],['account','👤','Account']].map(([k,i,l])=>`<button class="${tab===k?'on':''}" onclick="go('${k}')"><span class="ni">${i}</span><br>${l}</button>`).join('')}</nav>`};
 
 async function render(){
@@ -163,9 +161,8 @@ async function auth(reg){
 function logout(){T=null;ME=null;LS.removeItem('t');tab='login';render()}
 
 function home(){return `<div class="hero2"><div class="c1"></div><div class="c2"></div><p>Solve your financial problems and increase your business with us with an ease !!!</p><button class="btn gold" onclick="go('loan')">Apply Now</button><i class="bar"></i></div>
- <div class="wrap" style="padding-top:14px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div><div class="grid"><div class="t t1"><span>Business loans</span></div><div class="t t2"><span>Friendly support</span></div><div class="t t3"><span>Family needs</span></div><div class="t t4"><span>Home &amp; savings</span></div></div>
- <p class="tagline">Apply with us apply with confidence.</p>
- <p class="mute" style="text-align:center;line-height:1.5">No fees before you receive your loan. Never send money to anyone to release or approve a loan.</p></div>${foot()}`}
+ <div class="wrap" style="padding-top:14px"><div class="grid"><div class="t t1"><span>Business loans</span></div><div class="t t2"><span>Friendly support</span></div><div class="t t3"><span>Family needs</span></div><div class="t t4"><span>Home &amp; savings</span></div></div>
+ <p class="tagline">Apply with us apply with confidence.</p></div>`}
 
 
 function statusLabel(s){return {pending:'UNDER REVIEW',approved:'APPROVED',disbursed:'DISBURSED',completed:'COMPLETED',rejected:'REJECTED'}[s]||String(s).toUpperCase()}
@@ -225,11 +222,11 @@ function timeAgo(iso){const si=String(iso||'');const t=new Date(si.replace(' ','
 function loan(){
   const p=['id','personal','bank','signature'].every(k=>ME.profile[k]),a=ME.applications[0],c=ME.config;
   let h=bar('My loan','account');
-  if(a){h+=`<div class="wrap" style="padding-top:14px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div>${loanPageCard(a)}</div>`}
+  if(a){h+=`<div class="wrap" style="padding-top:14px">${loanPageCard(a)}</div>`}
   if(!a||a.status==='rejected'){
-    h+=p?loanForm(c):`<div class="wrap" style="padding-top:14px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div><div class="card"><p>Complete your profile before applying.</p><button class="btn" onclick="go('profile')">Complete profile</button></div></div>`;
+    h+=p?loanForm(c):`<div class="wrap" style="padding-top:14px"><div class="card"><p>Complete your profile before applying.</p><button class="btn" onclick="go('profile')">Complete profile</button></div></div>`;
   }
-  return h+foot();
+  return h;
 }
 function loanForm(c){LT=LT&&c.terms.includes(LT)?LT:c.terms[0];LA=(LA!=null&&LA>=c.min&&LA<=c.max)?LA:c.min;
  return `<div class="loanhero" style="background-image:url(img/home-1.jpg)"><div class="lh-bubble">GET A LOAN<br>TODAY</div><div class="lh-badge">APPLY FOR A LOAN NOW</div></div>
@@ -255,13 +252,13 @@ function demoDisburse(){}
 
 const AV='<svg viewBox="0 0 48 48" width="46" height="46"><circle cx="24" cy="24" r="23" fill="#c9d3d9" stroke="#ffffff88" stroke-width="2"/><circle cx="24" cy="19" r="8" fill="#fff"/><path d="M8 42c2-10 10-13 16-13s14 3 16 13z" fill="#fff"/></svg>';
 function wallet(){const a=ME.applications[0],bal=ME.balance||0;
- return `<div class="wrap" style="padding-top:16px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div>
+ return `<div class="wrap" style="padding-top:16px">
  <div class="card" style="background:var(--g);color:#fff;display:flex;gap:14px;align-items:center;padding:14px">${AV}<div><b style="font-size:18px">Account</b><div style="font-size:13px;opacity:.85">${ME.phone}</div></div></div>
  <div class="card" style="text-align:center;padding:26px 16px"><div class="mute" style="letter-spacing:.06em">ACCOUNT BALANCE</div><div class="big" style="font-family:Georgia,serif;margin:8px 0">${peso(bal)}</div>${a?`<span class="latest">Latest Loan: ${peso(a.amount)}</span>`:''}</div>
  <button class="btn" onclick="openModal('withdraw')">Withdrawal</button>
  ${a?walletLoanCard(a):`<div class="card"><p style="margin:0 0 10px">No loan yet. Apply to see your progress here.</p><button class="btn" onclick="go('loan')">Apply for a loan</button></div>`}
  ${(ME.withdrawals||[]).length?`<div class="card wlist"><b style="padding:0 4px">Withdrawal history</b>${ME.withdrawals.map(w=>`<div class="row" style="cursor:default"><span>${peso(w.amount)}</span><span class="status s-${w.status==='paid'?'approved':w.status==='rejected'?'rejected':'pending'}">${w.status.toUpperCase()}</span></div>`).join('')}</div>`:''}
- </div>${foot()}`}
+ </div>`}
 function openSupport(){const u=ME.config.support;if(u)window.open(u,'_blank');else alert('This button opens your live chat (WhatsApp, Messenger or Telegram). Set SUPPORT_URL in the real app.')}
 function contact(){const q=[['1. What are the loan terms?','Complete your profile (valid ID, personal info, bank account and signature), then choose an amount and term. You need a valid ID and a bank account under your own name. There is no fee to apply or to receive your loan.'],
 ['2. How long does it take to apply?','Registering and completing your profile takes a few minutes. We aim to review applications within 1 business day. Contact customer service for more specific information.'],
@@ -269,10 +266,10 @@ function contact(){const q=[['1. What are the loan terms?','Complete your profil
 ['4. How do I repay?','Your monthly payment and due dates are in your contract and under My Repayment. Payment instructions are provided when your loan is released. Late charges, if any, are stated in the contract.'],
 ['5. How can I contact the service?','Tap Online Service above during service hours ('+ME.config.hours+').'],
 ['6. Can I delete my account?','Yes. Contact customer service and we will process your request under the Data Privacy Act.']];
- return bar('Contact us')+`<div class="wrap" style="padding-top:12px"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div><div class="card" style="text-align:center"><div style="width:58px;height:58px;border-radius:50%;background:#fff;box-shadow:0 1px 6px #0002;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:30px">🎧</div><button class="btn" style="margin:0" onclick="openSupport()">Online Service ➤</button></div>
+ return bar('Contact us')+`<div class="wrap" style="padding-top:12px"><div class="card" style="text-align:center"><div style="width:58px;height:58px;border-radius:50%;background:#fff;box-shadow:0 1px 6px #0002;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:30px">🎧</div><button class="btn" style="margin:0" onclick="openSupport()">Online Service ➤</button></div>
  <div style="text-align:center;margin-bottom:14px"><span style="display:inline-block;background:#e8eef6;color:#1d4ed8;font-weight:700;font-size:13px;padding:8px 18px;border-radius:99px">Service time is ${ME.config.hours}</span></div>
  <div class="card faq" style="border-left:4px solid var(--r2)"><b>How you get your money</b><p>An approved loan is sent straight to the bank account in your profile. There is no withdrawal step and no fee to receive it.</p></div>
- ${q.map(([a,b])=>`<div class="card faq"><b>${a}</b><p>${b}</p></div>`).join('')}</div>${foot()}`}
+ ${q.map(([a,b])=>`<div class="card faq"><b>${a}</b><p>${b}</p></div>`).join('')}</div>`}
 
 // The account's real tier is still 1–5 (computed server-side from activity), but it's shown here as a
 // credit-score-style number: 1→100, 2→300, 3→500, 4→700, 5→900.
@@ -303,7 +300,7 @@ function account(){const lvl=ME.level||1;
  return `<div class="hd" style="text-align:left;padding:22px 20px;border-radius:0 0 22px 22px"><div style="text-align:center;margin-bottom:16px">Personal Center</div>
  <div style="display:flex;gap:14px;align-items:center"><div style="flex:none">${levelGauge(lvl)}</div><div><div style="font-size:20px;font-weight:700">Account number</div><div style="font-size:20px;font-family:Georgia,serif;margin-top:6px">${ME.phone}</div></div></div>
  <div style="display:flex;gap:14px;margin-top:18px"><div class="pill" onclick="go('wallet')">₱ My wallet</div><div class="pill" onclick="go('settings')">⚙️ Settings</div></div></div>
- <div class="wrap"><div class="nofee">No fees, ever — to apply, to receive your loan, or to withdraw.</div><div class="card" style="padding:4px 16px">${rows.map(([k,e,c,l])=>`<div class="row" onclick="go('${k}')"><span style="display:flex;align-items:center;gap:14px"><i class="ic" style="background:${c}22;color:${c}">${e}</i><b>${l}</b></span><span>›</span></div>`).join('')}</div></div>${foot()}`}
+ <div class="wrap"><div class="card" style="padding:4px 16px">${rows.map(([k,e,c,l])=>`<div class="row" onclick="go('${k}')"><span style="display:flex;align-items:center;gap:14px"><i class="ic" style="background:${c}22;color:${c}">${e}</i><b>${l}</b></span><span>›</span></div>`).join('')}</div></div>`}
 
 function settings(){return bar('Settings','account')+`<div class="wrap"><div class="card"><p class="mute" style="margin:0">Phone number</p><b>${ME.phone}</b><p class="mute" style="margin:14px 0 0">Lender</p><b>${ME.config.lender}</b><br><span class="mute">SEC No. ${ME.config.sec}</span></div><div class="card"><p class="mute" style="margin:0">Withdrawal code</p><b>${ME.hasPin?'Set by our team':'Not set yet'}</b><p class="mute" style="margin:8px 0 0">${ME.hasPin?'Check your notifications 🔔 for the code, or contact support if you need it reset.':'Only our team can set this. Contact support, then check your notifications 🔔 for the code.'}</p></div><button class="btn" onclick="logout()">Log out</button></div>`}
 
