@@ -518,7 +518,8 @@ app.put('/api/admin/applications/:id/custom-status', admin, (req, res) => {
   const id = +req.params.id;
   if (!db.prepare('SELECT id FROM applications WHERE id=?').get(id)) return res.status(404).json({ error: 'Application not found.' });
   const text = String((req.body && req.body.text) || '').trim().slice(0, 60);
-  const color = (req.body && req.body.color) === 'red' ? 'red' : 'blue';
+  const colorIn = (req.body && req.body.color) || '';
+  const color = ['red', 'green'].includes(colorIn) ? colorIn : 'blue';
   db.prepare('UPDATE applications SET custom_status=?, custom_status_color=? WHERE id=?').run(text || null, text ? color : null, id);
   res.json({ ok: true });
 });
