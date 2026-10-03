@@ -141,7 +141,7 @@ async function render(){
   if(!ME)try{await load()}catch{return A.innerHTML=authView()}
   const V={home,loan,wallet,contact,account,settings,repay,profile,contract,withdrawals,id:fID,personal:fPersonal,bank:fBank,signature:fSig}[view]||home;
   A.innerHTML=V()+(['id','personal','bank','signature'].includes(view)?'':navb()+bellHTML())+modalHTML();
-  if(view==='signature')initSig();
+  if(view==='signature'&&!ME.profileLocked)initSig();
   if(view==='loan')calc();
 }
 function authView(){
@@ -173,7 +173,7 @@ function statusBadge(a){
  if(a.custom_status)return `<span class="stbadge" style="background:${CS_COLORS[a.custom_status_color]||CS_COLORS.blue}">${esc(a.custom_status).toUpperCase()}</span>`;
  return `<span class="stbadge ${a.status==='rejected'?'rej':a.status==='completed'?'done':''}">${statusLabel(a.status)}</span>`;
 }
-function statusDesc(a){if(!a)return'';return {pending:'Your application is being reviewed. We will notify you once a decision is made.',approved:'Your loan is approved and will be sent to your bank account on file shortly.',disbursed:'Your loan has been sent to your bank account on file.',completed:'This loan has been fully repaid. Thank you.',rejected:'Your application was not approved this time.'}[a.status]||''}
+function statusDesc(a){if(!a)return'';return {pending:'Your application is being reviewed. We will notify you once a decision is made.',approved:'Your loan is approved and will be sent shortly.',disbursed:'Your loan has been sent to your bank account on file.',completed:'This loan has been fully repaid. Thank you.',rejected:'Your application was not approved this time.'}[a.status]||''}
 function stepFill(a){return {pending:1,approved:2,disbursed:3,completed:3}[a?a.status:'']||0}
 function stepper(fill,labels){return `<div class="steps">${labels.map((l,i)=>`<div class="step ${i<fill?'done':''}"><span class="dot">${i<fill?'✓':''}</span><span class="lbl">${l}</span></div>${i<labels.length-1?`<div class="line ${i<fill-1?'done':''}"></div>`:''}`).join('')}</div>`}
 function fmtDate(x){try{const s=String(x||'');return new Date(s.replace(' ','T')+(s.includes('Z')?'':'Z')).toLocaleDateString('en-PH',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return''}}
@@ -209,8 +209,13 @@ function modalHTML(){if(!MODAL)return'';
  if(MODAL==='notifications'){return `<div class="notifoverlay" onclick="closeModal()"><div class="notifpanel" onclick="event.stopPropagation()">
   <div class="nfhd">Notifications<button onclick="closeModal()">✕</button></div>
   <div class="nflist">${NOTIFS.length?NOTIFS.map(n=>`<div class="nfcard"><div class="nfhead"><span class="nficon"></span><span class="nfapp">Assistant Support</span><span class="nftime">${timeAgo(n.created_at)}</span></div><div class="nfmsg">${n.message}</div></div>`).join(''):'<p class="mute" style="margin:16px 4px">No notifications yet.</p>'}</div></div></div>`}
+ if(MODAL==='withdrawOk'){
+  return `<div class="modalbg" onclick="closeWithdrawOk()"><div class="modalcard" style="background:#f2b84b;color:#5a0a12;text-align:center" onclick="event.stopPropagation()">
+  <div class="modalbody" style="padding:30px 22px"><p style="margin:0;font-weight:700;font-size:15px;line-height:1.5">Withdrawal is processing.<br>Please check in Withdrawal Status.</p></div>
+  <div class="modalft" style="justify-content:center"><button style="color:#5a0a12;font-weight:800" onclick="closeWithdrawOk()">OK</button></div></div></div>`}
  return ''}
-async function doWithdraw(){try{await api('/withdraw',{method:'POST',body:{amount:$('#mwa').value,pin:$('#mwc').value}});closeModal();await load();alert('Withdrawal is processing. Please check in Withdrawal Status.');go('withdrawals')}catch(e){$('#mwerr').textContent=e.message}}
+async function doWithdraw(){try{await api('/withdraw',{method:'POST',body:{amount:$('#mwa').value,pin:$('#mwc').value}});await load();MODAL='withdrawOk';render()}catch(e){$('#mwerr').textContent=e.message}}
+function closeWithdrawOk(){MODAL=null;go('withdrawals')}
 
 let NOTIFS=[],NOTIF_UNREAD=0;
 function bellHTML(){if(!ME)return'';return `<div class="bellwrap"><button class="bellbtn" onclick="openNotifs()">🔔${NOTIF_UNREAD>0?`<span class="bellbadge">${NOTIF_UNREAD>9?'9+':NOTIF_UNREAD}</span>`:''}</button></div>`}
@@ -320,14 +325,14 @@ function repay(){const a=ME.applications[0],live=a&&['approved','disbursed'].inc
  return bar('My Repayment Period','account')+`<div class="wrap" style="padding-top:10px">${rows}</div>`}
 function profile(){const locked=ME.profileLocked;
  return bar('My profile','account')+`<div class="wrap"><div class="card" style="background:var(--g);color:#fff">${locked?'Your profile is submitted and locked. Contact support if something needs to change.':'Complete the information to apply for a loan'}</div>
- <div class="card">${[['id','Valid ID'],['personal','Personal info'],['bank','Bank account'],['signature','Signature']].map(([k,l])=>locked?`<div class="row" style="cursor:default"><b>${l}</b>${done(k)}</div>`:`<div class="row" onclick="go('${k}')"><b>${l}</b>${done(k)}<span>›</span></div>`).join('')}</div>
+ <div class="card">${[['id','Valid ID'],['personal','Personal info'],['bank','Bank account'],['signature','Signature']].map(([k,l])=>`<div class="row" onclick="go('${k}')"><b>${l}</b>${done(k)}<span>›</span></div>`).join('')}</div>
  <div class="err" id="perr"></div>${locked?'':`<button class="btn" onclick="submitProfile()">Submit</button>`}</div>`}
 async function submitProfile(){if(!['id','personal','bank','signature'].every(k=>ME.profile[k])){$('#perr').textContent='Please complete all four steps first.';return}
  try{await api('/profile/submit',{method:'POST',body:{}});await load();go('loan')}catch(e){$('#perr').textContent=e.message}}
 
 // Bank account fields: typed only, no pasting/dropping text in (covers right-click paste, Ctrl+V, and
 // long-press paste on mobile — all fire the same "paste" event).
-const field=(id,l,v='',t='text')=>`<label>${l}</label><input id="${id}" type="${t}" value="${(v||'').replace(/"/g,'&quot;')}" autocomplete="off" onpaste="return false" oncopy="return false" oncut="return false" ondrop="return false">`;
+const field=(id,l,v='',t='text',dis=false)=>`<label>${l}</label><input id="${id}" type="${t}" value="${(v||'').replace(/"/g,'&quot;')}" autocomplete="off" onpaste="return false" oncopy="return false" oncut="return false" ondrop="return false" ${dis?'disabled':''}>`;
 async function save(section,body){try{await api('/profile/'+section,{method:'PUT',body});await load();go('profile')}catch(e){msg=e.message;render()}}
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const uri=s=>'data:image/svg+xml;utf8,'+encodeURIComponent(s);
@@ -337,30 +342,36 @@ const ART={
  selfie:uri('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200" fill="#fff"/><text x="200" y="32" font-size="13" font-weight="700" text-anchor="middle" font-family="Arial">Hold ID Card</text><path d="M40 200 c2-46 30-62 66-62 s64 16 66 62z" fill="#d2b06b"/><circle cx="106" cy="86" r="32" fill="#f2c9a5"/><path d="M74 80 c4-34 60-38 64 0 c-14-14-50-14-64 0z" fill="#4a3324"/><circle cx="96" cy="88" r="3" fill="#333"/><circle cx="116" cy="88" r="3" fill="#333"/><path d="M96 102 q10 9 20 0" stroke="#a5583a" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M150 160 C170 140 190 110 204 90" stroke="#f2c9a5" stroke-width="16" fill="none" stroke-linecap="round"/><rect x="180" y="58" width="96" height="60" rx="6" fill="#dbeafe" stroke="#93b4e6" stroke-width="2"/><rect x="188" y="68" width="24" height="30" fill="#fff"/><rect x="220" y="72" width="46" height="5" rx="2" fill="#fff"/><rect x="220" y="86" width="40" height="5" rx="2" fill="#fff"/></svg>')};
 const TILES=[['front','front'],['back','back'],['selfie','selfie']];
 function prev(k){const f=$('#u_'+k).files[0];if(f)$('#im_'+k).src=URL.createObjectURL(f)}
-function fID(){const d=ME.profile.id||{};
- return bar('Valid ID','profile')+`<div class="rowsw"><div class="kv"><input id="f_name" style="width:100%;text-align:left" placeholder="Name" value="${esc(d.name)}"></div><div class="kv"><input id="f_no" style="width:100%;text-align:left" placeholder="ID No." value="${esc(d.id_no)}"></div></div>
- <div class="wrap"><h3 style="margin:8px 0 14px">ID Pictures</h3><div class="tiles">${TILES.map(([k])=>`<label class="tile"><img id="im_${k}" src="${ART[k]}" alt=""><input type="file" accept="image/jpeg,image/png" id="u_${k}" hidden onchange="prev('${k}')">${d[k]?'<span class="ok2">Uploaded</span>':''}</label>`).join('')}</div>
+function fID(){const d=ME.profile.id||{},locked=ME.profileLocked;
+ return bar('Valid ID','profile')+`${locked?`<div class="wrap" style="padding-bottom:0"><div class="card" style="background:var(--g);color:#fff">Your profile is submitted and locked. This is view-only — contact support if something needs to change.</div></div>`:''}
+ <div class="rowsw"><div class="kv"><input id="f_name" style="width:100%;text-align:left" placeholder="Name" value="${esc(d.name)}" ${locked?'disabled':''}></div><div class="kv"><input id="f_no" style="width:100%;text-align:left" placeholder="ID No." value="${esc(d.id_no)}" ${locked?'disabled':''}></div></div>
+ <div class="wrap"><h3 style="margin:8px 0 14px">ID Pictures</h3><div class="tiles" style="${locked?'pointer-events:none':''}">${TILES.map(([k])=>`<label class="tile"><img id="im_${k}" src="${ART[k]}" alt=""><input type="file" accept="image/jpeg,image/png" id="u_${k}" hidden onchange="prev('${k}')">${d[k]?'<span class="ok2">Uploaded</span>':''}</label>`).join('')}</div>
  <h3 style="line-height:1.45;margin-top:34px">The photo must be clear and the ID number can be seen clearly</h3><div class="err" id="err"></div></div>
- <div class="submitbar"><button id="sv" onclick="saveID()">Submit</button></div>`}
+ ${locked?'':`<div class="submitbar"><button id="sv" onclick="saveID()">Submit</button></div>`}`}
 async function up(k,old){const f=$('#u_'+k).files[0];if(!f)return old||'';const fd=new FormData();fd.append('file',f);return (await api('/upload',{method:'POST',body:fd})).file}
 async function saveID(){const d=ME.profile.id||{},err=m=>{$('#err').textContent=m};err('');$('#sv').disabled=true;
  try{const name=$('#f_name').value.trim(),no=$('#f_no').value.trim();if(!name||!no)throw Error('Please enter your name and ID number.');
   const front=await up('front',d.front),back=await up('back',d.back),selfie=await up('selfie',d.selfie);
   if(!front||!back||!selfie)throw Error('Please add all three photos.');
   await api('/profile/id',{method:'PUT',body:{name,id_no:no,front,back,selfie}});await load();go('profile')}catch(e){err(e.message);$('#sv').disabled=false}}
-const kv=(id,l,v,ph,t='text')=>`<div class="kv"><label>${l}</label><input id="${id}" type="${t}" placeholder="${ph}" value="${esc(v)}"></div>`;
-function fPersonal(){const d=ME.profile.personal||{};
- return bar('Personal Info','profile')+`<div class="rowsw">${kv('p_c','Company Name',d.company,'Enter company name')}${kv('p_p','Position',d.position,'Enter your position')}${kv('p_s','Salary',d.salary,'0','number')}${kv('p_h','Family address',d.home_address,'Family address')}${kv('p_a','Current address',d.current_address,'Enter current address')}</div>
- <div class="sh">Family Contact</div><div class="rowsw">${kv('p_fn','Name',d.family_name,'Enter name')}${kv('p_fr','Relationship',d.family_rel,'Relationship')}${kv('p_fp','Contact',d.family_phone,'Enter phone number','tel')}</div>
- <div class="sh">Emergency Contact</div><div class="rowsw">${kv('p_en','Name',d.emerg_name,'Enter name')}${kv('p_er','Relationship',d.emerg_rel,'Relationship')}${kv('p_ep','Contact',d.emerg_phone,'Enter phone number','tel')}</div>
- <label class="consent"><input type="checkbox" id="p_ok" ${d.contacts_ok?'checked':''}><span>I confirm the people listed above agreed to be my contacts. The lender may contact them only to verify my application or to reach me if I cannot be reached, and will not share my loan details or pressure them.</span></label><div class="err" id="err" style="padding:0 16px 80px"></div>
- <div class="submitbar"><button id="sv" onclick="savePersonal()">Submit</button></div>`}
+const kv=(id,l,v,ph,t='text',dis=false)=>`<div class="kv"><label>${l}</label><input id="${id}" type="${t}" placeholder="${ph}" value="${esc(v)}" ${dis?'disabled':''}></div>`;
+function fPersonal(){const d=ME.profile.personal||{},locked=ME.profileLocked;
+ return bar('Personal Info','profile')+`${locked?`<div class="wrap" style="padding-bottom:0"><div class="card" style="background:var(--g);color:#fff">Your profile is submitted and locked. This is view-only — contact support if something needs to change.</div></div>`:''}
+ <div class="rowsw">${kv('p_c','Company Name',d.company,'Enter company name',undefined,locked)}${kv('p_p','Position',d.position,'Enter your position',undefined,locked)}${kv('p_s','Salary',d.salary,'0','number',locked)}${kv('p_h','Family address',d.home_address,'Family address',undefined,locked)}${kv('p_a','Current address',d.current_address,'Enter current address',undefined,locked)}</div>
+ <div class="sh">Family Contact</div><div class="rowsw">${kv('p_fn','Name',d.family_name,'Enter name',undefined,locked)}${kv('p_fr','Relationship',d.family_rel,'Relationship',undefined,locked)}${kv('p_fp','Contact',d.family_phone,'Enter phone number','tel',locked)}</div>
+ <div class="sh">Emergency Contact</div><div class="rowsw">${kv('p_en','Name',d.emerg_name,'Enter name',undefined,locked)}${kv('p_er','Relationship',d.emerg_rel,'Relationship',undefined,locked)}${kv('p_ep','Contact',d.emerg_phone,'Enter phone number','tel',locked)}</div>
+ <label class="consent"><input type="checkbox" id="p_ok" ${d.contacts_ok?'checked':''} ${locked?'disabled':''}><span>I confirm the people listed above agreed to be my contacts. The lender may contact them only to verify my application or to reach me if I cannot be reached, and will not share my loan details or pressure them.</span></label><div class="err" id="err" style="padding:0 16px 80px"></div>
+ ${locked?'':`<div class="submitbar"><button id="sv" onclick="savePersonal()">Submit</button></div>`}`}
 async function savePersonal(){const g=i=>$('#'+i).value.trim();
  const body={company:g('p_c'),position:g('p_p'),salary:g('p_s'),home_address:g('p_h'),current_address:g('p_a'),family_name:g('p_fn'),family_rel:g('p_fr'),family_phone:g('p_fp'),emerg_name:g('p_en'),emerg_rel:g('p_er'),emerg_phone:g('p_ep'),contacts_ok:$('#p_ok').checked?'yes':''};
  try{if(!body.contacts_ok)throw Error('Please confirm your contacts agreed to be listed.');await api('/profile/personal',{method:'PUT',body});await load();go('profile')}catch(e){$('#err').textContent=e.message}}
-function fBank(){const d=ME.profile.bank||{};return bar('Bank account','profile')+`<div class="wrap">${field('b_n','Bank name',d.bank_name)}${field('b_h','Account holder name',d.holder)}${field('b_a','Account number',d.account_no)}
- <p class="mute">This can be your own account, or someone else's you trust (e.g. a family member's) — just make sure the account holder name is entered correctly, since that's where your loan will be sent.</p><div class="err">${msg}</div><button class="btn" onclick="save('bank',{bank_name:$('#b_n').value,holder:$('#b_h').value,account_no:$('#b_a').value})">Save</button></div>`}
-function fSig(){return bar('Handwritten signature','profile')+`<div class="wrap"><div class="card"><canvas id="cv"></canvas><p class="mute" style="text-align:center">Sign inside the box.</p><button class="btn" style="background:#977626;width:auto;padding:10px 30px;margin:auto" onclick="initSig()">Clear</button></div>
+function fBank(){const d=ME.profile.bank||{},locked=ME.profileLocked;
+ return bar('Bank account','profile')+`<div class="wrap">${locked?`<div class="card" style="background:var(--g);color:#fff">Your profile is submitted and locked. This is view-only — contact support if something needs to change.</div>`:''}${field('b_n','Bank name',d.bank_name,'text',locked)}${field('b_h','Account holder name',d.holder,'text',locked)}${field('b_a','Account number',d.account_no,'text',locked)}
+ <p class="mute">This can be your own account, or someone else's you trust (e.g. a family member's) — just make sure the account holder name is entered correctly, since that's where your loan will be sent.</p><div class="err">${msg}</div>${locked?'':`<button class="btn" onclick="save('bank',{bank_name:$('#b_n').value,holder:$('#b_h').value,account_no:$('#b_a').value})">Save</button>`}</div>`}
+function fSig(){const d=ME.profile.signature,locked=ME.profileLocked;
+ if(locked)return bar('Handwritten signature','profile')+`<div class="wrap"><div class="card" style="background:var(--g);color:#fff">Your profile is submitted and locked. This is view-only — contact support if something needs to change.</div>
+ <div class="card">${d&&d.image?`<img src="${d.image}" style="max-width:100%;border-bottom:1px solid #999">`:'<p class="mute">No signature on file.</p>'}</div></div>`;
+ return bar('Handwritten signature','profile')+`<div class="wrap"><div class="card"><canvas id="cv"></canvas><p class="mute" style="text-align:center">Sign inside the box.</p><button class="btn" style="background:#977626;width:auto;padding:10px 30px;margin:auto" onclick="initSig()">Clear</button></div>
  <div class="err">${msg}</div><button class="btn" onclick="saveSig()">Save signature</button></div>`}
 let drew=false;function initSig(){const c=$('#cv'),r=c.getBoundingClientRect(),x=c.getContext('2d');c.width=r.width;c.height=r.height;x.lineWidth=2.5;x.lineCap='round';x.strokeStyle='#111';drew=false;let on=false;
  const p=e=>{const b=c.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top]};
@@ -370,7 +381,6 @@ function saveSig(){if(!drew){msg='Please sign in the box.';return render()}save(
 
 function contract(){const a=ME.applications[0],d=ME.profile,c=ME.config;
  if(!a)return bar('My contract','account')+`<div class="wrap"><div class="card">Your contract appears here after you submit a loan application.</div></div>`;
- const ben=(d.bank&&d.bank.holder)||(d.id&&d.id.name)||'';
  return bar('My contract','account')+`<div class="wrap"><div class="card contract"><b>LOAN AGREEMENT</b><p>
  Name of the Borrower: ${esc(d.id?.name||'')}<br>
  ID Number: ${esc(d.id?.id_no||'')}<br>
@@ -378,8 +388,7 @@ function contract(){const a=ME.applications[0],d=ME.profile,c=ME.config;
  Loan Amount Applied: ${peso(a.amount)}<br>
  Repayment Period: ${a.term_months} months<br>
  Interest Rate: ${a.annual_rate}% per month<br>
- Monthly Repayment: ${pesoWhole(repaySchedule(a)[0])}<br>
- Beneficiary Name: ${esc(ben)}</p>
+ Monthly Repayment: ${pesoWhole(repaySchedule(a)[0])}</p>
  <p>This Loan Agreement ("Agreement") is entered into by and between the Lender (hereinafter "Party A") and the Borrower named above (hereinafter "Party B"), collectively the "Parties."</p>
  <h4>Article 1 — Form of the Loan</h4><p>This is an unsecured, credit-based loan extended to Party B on the basis of Party B's identity verification and creditworthiness, without the pledge of collateral or security.</p>
  <h4>Article 2 — Interest Rate</h4><p>The interest rate applied to this loan is a premium rate that in no case exceeds twenty-five percent (25%) per year, consistent with the Interest Rate and Monthly Repayment stated above.</p>
