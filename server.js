@@ -540,5 +540,14 @@ app.get('/api/admin/file/:name', admin, (req, res) => {
   if (!/^[\w-]+\.jpg$/.test(req.params.name)) return res.sendStatus(400);
   res.sendFile(path.join(UP, req.params.name));
 });
+// Lets a member view their own uploaded ID photos (front/back/selfie) back — not any other file, and not
+// anyone else's. Same file storage as the admin-only route above, just scoped to the caller's own profile.
+app.get('/api/file/:name', auth, (req, res) => {
+  if (!/^[\w-]+\.jpg$/.test(req.params.name)) return res.sendStatus(400);
+  const idProfile = loadProfile(req.uid).id || {};
+  const owns = ['front', 'back', 'selfie'].some((k) => idProfile[k] === req.params.name);
+  if (!owns) return res.sendStatus(403);
+  res.sendFile(path.join(UP, req.params.name));
+});
 
 app.listen(process.env.PORT || 3000, () => console.log('Running on http://localhost:' + (process.env.PORT || 3000)));
