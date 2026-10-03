@@ -543,8 +543,6 @@ function viewContract(id){
  const a=APPS.find(x=>x.id===id); if(!a)return;
  const nm=(a.profile&&a.profile.id&&a.profile.id.name)||'[Borrower name]';
  const idno=(a.profile&&a.profile.id&&a.profile.id.id_no)||'[ID number]';
- const bank=(a.profile&&a.profile.bank)||{};
- const ben=bank.holder||nm;
  const w=window.open('','_blank'); if(!w)return;
  w.document.write(`<pre style="font-family:Georgia,serif;font-size:14px;line-height:1.8;max-width:640px;margin:40px auto;white-space:pre-wrap">
 LOAN AGREEMENT
@@ -556,7 +554,6 @@ Loan Amount Applied: ${peso(a.amount)}
 Repayment Period: ${a.term_months} months
 Interest Rate: ${a.annual_rate}% per month
 Monthly Repayment: ${peso(a.monthly)}
-Beneficiary Name: ${esc(ben)}
 
 This Loan Agreement ("Agreement") is entered into by and between the Lender (hereinafter "Party A") and the Borrower named above (hereinafter "Party B"), collectively the "Parties."
 
