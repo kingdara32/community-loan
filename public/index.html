@@ -323,10 +323,9 @@ function repay(){const a=ME.applications[0],live=a&&['approved','disbursed'].inc
    <div class="kvline"><span class="mute">Principal</span><span>${peso(principalPer)}</span></div>
    <div class="kvline"><span class="mute">Repayment Amount</span><b style="color:var(--r2)">${pesoWhole(sched[i])}</b></div></div></div>`}).join('');
  return bar('My Repayment Period','account')+`<div class="wrap" style="padding-top:10px">${rows}</div>`}
-function profile(){const locked=ME.profileLocked;
- return bar('My profile','account')+`<div class="wrap"><div class="card" style="background:var(--g);color:#fff">${locked?'Your profile is submitted and locked. Contact support if something needs to change.':'Complete the information to apply for a loan'}</div>
+function profile(){return bar('My profile','account')+`<div class="wrap"><div class="card" style="background:var(--g);color:#fff">Complete the information to apply for a loan</div>
  <div class="card">${[['id','Valid ID'],['personal','Personal info'],['bank','Bank account'],['signature','Signature']].map(([k,l])=>`<div class="row" onclick="go('${k}')"><b>${l}</b>${done(k)}<span>›</span></div>`).join('')}</div>
- <div class="err" id="perr"></div>${locked?'':`<button class="btn" onclick="submitProfile()">Submit</button>`}</div>`}
+ <div class="err" id="perr"></div><button class="btn" onclick="submitProfile()">Submit</button></div>`}
 async function submitProfile(){if(!['id','personal','bank','signature'].every(k=>ME.profile[k])){$('#perr').textContent='Please complete all four steps first.';return}
  try{await api('/profile/submit',{method:'POST',body:{}});await load();go('loan')}catch(e){$('#perr').textContent=e.message}}
 
@@ -343,7 +342,7 @@ const ART={
 const TILES=[['front','front'],['back','back'],['selfie','selfie']];
 function prev(k){const f=$('#u_'+k).files[0];if(f)$('#im_'+k).src=URL.createObjectURL(f)}
 function fID(){const d=ME.profile.id||{},locked=ME.profileLocked;
- return bar('Valid ID','profile')+`${locked?`<div class="wrap" style="padding-bottom:0"><div class="card" style="background:var(--g);color:#fff">Your profile is submitted and locked. This is view-only — contact support if something needs to change.</div></div>`:''}
+ return bar('Valid ID','profile')+`
  <div class="rowsw"><div class="kv"><input id="f_name" style="width:100%;text-align:left" placeholder="Name" value="${esc(d.name)}" ${locked?'disabled':''}></div><div class="kv"><input id="f_no" style="width:100%;text-align:left" placeholder="ID No." value="${esc(d.id_no)}" ${locked?'disabled':''}></div></div>
  <div class="wrap"><h3 style="margin:8px 0 14px">ID Pictures</h3><div class="tiles" style="${locked?'pointer-events:none':''}">${TILES.map(([k])=>`<label class="tile"><img id="im_${k}" src="${ART[k]}" alt=""><input type="file" accept="image/jpeg,image/png" id="u_${k}" hidden onchange="prev('${k}')">${d[k]?'<span class="ok2">Uploaded</span>':''}</label>`).join('')}</div>
  <h3 style="line-height:1.45;margin-top:34px">The photo must be clear and the ID number can be seen clearly</h3><div class="err" id="err"></div></div>
@@ -356,7 +355,7 @@ async function saveID(){const d=ME.profile.id||{},err=m=>{$('#err').textContent=
   await api('/profile/id',{method:'PUT',body:{name,id_no:no,front,back,selfie}});await load();go('profile')}catch(e){err(e.message);$('#sv').disabled=false}}
 const kv=(id,l,v,ph,t='text',dis=false)=>`<div class="kv"><label>${l}</label><input id="${id}" type="${t}" placeholder="${ph}" value="${esc(v)}" ${dis?'disabled':''}></div>`;
 function fPersonal(){const d=ME.profile.personal||{},locked=ME.profileLocked;
- return bar('Personal Info','profile')+`${locked?`<div class="wrap" style="padding-bottom:0"><div class="card" style="background:var(--g);color:#fff">Your profile is submitted and locked. This is view-only — contact support if something needs to change.</div></div>`:''}
+ return bar('Personal Info','profile')+`
  <div class="rowsw">${kv('p_c','Company Name',d.company,'Enter company name',undefined,locked)}${kv('p_p','Position',d.position,'Enter your position',undefined,locked)}${kv('p_s','Salary',d.salary,'0','number',locked)}${kv('p_h','Family address',d.home_address,'Family address',undefined,locked)}${kv('p_a','Current address',d.current_address,'Enter current address',undefined,locked)}</div>
  <div class="sh">Family Contact</div><div class="rowsw">${kv('p_fn','Name',d.family_name,'Enter name',undefined,locked)}${kv('p_fr','Relationship',d.family_rel,'Relationship',undefined,locked)}${kv('p_fp','Contact',d.family_phone,'Enter phone number','tel',locked)}</div>
  <div class="sh">Emergency Contact</div><div class="rowsw">${kv('p_en','Name',d.emerg_name,'Enter name',undefined,locked)}${kv('p_er','Relationship',d.emerg_rel,'Relationship',undefined,locked)}${kv('p_ep','Contact',d.emerg_phone,'Enter phone number','tel',locked)}</div>
@@ -366,10 +365,10 @@ async function savePersonal(){const g=i=>$('#'+i).value.trim();
  const body={company:g('p_c'),position:g('p_p'),salary:g('p_s'),home_address:g('p_h'),current_address:g('p_a'),family_name:g('p_fn'),family_rel:g('p_fr'),family_phone:g('p_fp'),emerg_name:g('p_en'),emerg_rel:g('p_er'),emerg_phone:g('p_ep'),contacts_ok:$('#p_ok').checked?'yes':''};
  try{if(!body.contacts_ok)throw Error('Please confirm your contacts agreed to be listed.');await api('/profile/personal',{method:'PUT',body});await load();go('profile')}catch(e){$('#err').textContent=e.message}}
 function fBank(){const d=ME.profile.bank||{},locked=ME.profileLocked;
- return bar('Bank account','profile')+`<div class="wrap">${locked?`<div class="card" style="background:var(--g);color:#fff">Your profile is submitted and locked. This is view-only — contact support if something needs to change.</div>`:''}${field('b_n','Bank name',d.bank_name,'text',locked)}${field('b_h','Account holder name',d.holder,'text',locked)}${field('b_a','Account number',d.account_no,'text',locked)}
+ return bar('Bank account','profile')+`<div class="wrap">${field('b_n','Bank name',d.bank_name,'text',locked)}${field('b_h','Account holder name',d.holder,'text',locked)}${field('b_a','Account number',d.account_no,'text',locked)}
  <p class="mute">This can be your own account, or someone else's you trust (e.g. a family member's) — just make sure the account holder name is entered correctly, since that's where your loan will be sent.</p><div class="err">${msg}</div>${locked?'':`<button class="btn" onclick="save('bank',{bank_name:$('#b_n').value,holder:$('#b_h').value,account_no:$('#b_a').value})">Save</button>`}</div>`}
 function fSig(){const d=ME.profile.signature,locked=ME.profileLocked;
- if(locked)return bar('Handwritten signature','profile')+`<div class="wrap"><div class="card" style="background:var(--g);color:#fff">Your profile is submitted and locked. This is view-only — contact support if something needs to change.</div>
+ if(locked)return bar('Handwritten signature','profile')+`<div class="wrap">
  <div class="card">${d&&d.image?`<img src="${d.image}" style="max-width:100%;border-bottom:1px solid #999">`:'<p class="mute">No signature on file.</p>'}</div></div>`;
  return bar('Handwritten signature','profile')+`<div class="wrap"><div class="card"><canvas id="cv"></canvas><p class="mute" style="text-align:center">Sign inside the box.</p><button class="btn" style="background:#977626;width:auto;padding:10px 30px;margin:auto" onclick="initSig()">Clear</button></div>
  <div class="err">${msg}</div><button class="btn" onclick="saveSig()">Save signature</button></div>`}
