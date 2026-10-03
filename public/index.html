@@ -143,6 +143,7 @@ async function render(){
   A.innerHTML=V()+(['id','personal','bank','signature'].includes(view)?'':navb()+bellHTML())+modalHTML();
   if(view==='signature'&&!ME.profileLocked)initSig();
   if(view==='loan')calc();
+  if(view==='id')loadIdPhotos();
 }
 function authView(){
   const reg=tab==='register';
@@ -341,6 +342,16 @@ const ART={
  selfie:uri('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200" fill="#fff"/><text x="200" y="32" font-size="13" font-weight="700" text-anchor="middle" font-family="Arial">Hold ID Card</text><path d="M40 200 c2-46 30-62 66-62 s64 16 66 62z" fill="#d2b06b"/><circle cx="106" cy="86" r="32" fill="#f2c9a5"/><path d="M74 80 c4-34 60-38 64 0 c-14-14-50-14-64 0z" fill="#4a3324"/><circle cx="96" cy="88" r="3" fill="#333"/><circle cx="116" cy="88" r="3" fill="#333"/><path d="M96 102 q10 9 20 0" stroke="#a5583a" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M150 160 C170 140 190 110 204 90" stroke="#f2c9a5" stroke-width="16" fill="none" stroke-linecap="round"/><rect x="180" y="58" width="96" height="60" rx="6" fill="#dbeafe" stroke="#93b4e6" stroke-width="2"/><rect x="188" y="68" width="24" height="30" fill="#fff"/><rect x="220" y="72" width="46" height="5" rx="2" fill="#fff"/><rect x="220" y="86" width="40" height="5" rx="2" fill="#fff"/></svg>')};
 const TILES=[['front','front'],['back','back'],['selfie','selfie']];
 function prev(k){const f=$('#u_'+k).files[0];if(f)$('#im_'+k).src=URL.createObjectURL(f)}
+// The ID tiles start out showing the generic illustration (ART[k]); for any slot that's actually been
+// uploaded, swap in the real photo once it's fetched (as an authenticated blob — these are private files,
+// not something a plain <img src> can reach without sending the member's login token).
+async function loadIdPhotos(){const d=ME.profile.id||{};
+ for(const k of ['front','back','selfie']){
+  if(!d[k])continue;
+  try{const r=await fetch('/api/file/'+d[k],{headers:{authorization:'Bearer '+T}});if(!r.ok)continue;
+   const url=URL.createObjectURL(await r.blob());const el=$('#im_'+k);if(el)el.src=url;
+  }catch(e){}
+ }}
 function fID(){const d=ME.profile.id||{},locked=ME.profileLocked;
  return bar('Valid ID','profile')+`
  <div class="rowsw"><div class="kv"><input id="f_name" style="width:100%;text-align:left" placeholder="Name" value="${esc(d.name)}" ${locked?'disabled':''}></div><div class="kv"><input id="f_no" style="width:100%;text-align:left" placeholder="ID No." value="${esc(d.id_no)}" ${locked?'disabled':''}></div></div>
