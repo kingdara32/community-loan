@@ -22,7 +22,12 @@ const enc = (t) => { const iv = crypto.randomBytes(12); const c = crypto.createC
 const dec = (s) => { const b = Buffer.from(s, 'base64'); const d = crypto.createDecipheriv('aes-256-gcm', key, b.subarray(0, 12));
   d.setAuthTag(b.subarray(12, 28)); return Buffer.concat([d.update(b.subarray(28)), d.final()]).toString('utf8'); };
 
-const db = new Database(process.env.DB_FILE || 'loan.db');
+// Where permanent data lives. When a Railway Volume (a permanent disk) is attached, Railway sets
+// RAILWAY_VOLUME_MOUNT_PATH automatically and the database + uploaded photos are kept there, so they
+// survive every redeploy and restart. DB_FILE / UPLOAD_DIR can still override it. With no volume
+// (e.g. running locally) it falls back to the app folder as before.
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || '';
+const db = new Database(process.env.DB_FILE || (DATA_DIR ? path.join(DATA_DIR, 'loan.db') : 'loan.db'));
 db.pragma('journal_mode = WAL');
 db.exec(`
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, phone TEXT UNIQUE NOT NULL, pass_hash TEXT NOT NULL,
@@ -68,7 +73,7 @@ function notify(uid, message, fromAdmin) { db.prepare('INSERT INTO notifications
 const genOrderNo = () => String(Date.now()) + String(Math.floor(100 + Math.random() * 900));
 
 
-const UP = path.join(__dirname, 'uploads');
+const UP = process.env.UPLOAD_DIR || (DATA_DIR ? path.join(DATA_DIR, 'uploads') : path.join(__dirname, 'uploads'));
 fs.mkdirSync(UP, { recursive: true });
 const upload = multer({
   storage: multer.diskStorage({ destination: UP, filename: (r, f, cb) => cb(null, crypto.randomUUID() + '.jpg') }),
