@@ -555,4 +555,32 @@ app.get('/api/file/:name', auth, (req, res) => {
   res.sendFile(path.join(UP, req.params.name));
 });
 
+// ---- Database backups ----
+// A snapshot of the database (accounts, loans, withdrawals, messages) is saved once a day beside it on the
+// permanent disk, keeping the 7 most recent. Staff can also download a fresh copy from the admin back office.
+// Photos aren't part of it — they already live on the permanent disk in uploads/. Note: ID and bank numbers
+// inside the database are encrypted with DATA_KEY, so a backup can only be read with the same DATA_KEY.
+const BACKUP_DIR = process.env.BACKUP_DIR || (DATA_DIR ? path.join(DATA_DIR, 'backups') : path.join(__dirname, 'backups'));
+function snapshotTo(file) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  if (fs.existsSync(file)) fs.unlinkSync(file);
+  db.exec("VACUUM INTO '" + file.replace(/'/g, "''") + "'");
+}
+function dailySnapshot() {
+  try {
+    const file = path.join(BACKUP_DIR, 'loan-' + new Date().toISOString().slice(0, 10) + '.db');
+    if (!fs.existsSync(file)) snapshotTo(file);
+    fs.readdirSync(BACKUP_DIR).filter((f) => /^loan-\d{4}-\d{2}-\d{2}\.db$/.test(f)).sort().slice(0, -7)
+      .forEach((f) => fs.unlinkSync(path.join(BACKUP_DIR, f)));
+  } catch (e) { console.error('Daily backup failed:', e.message); }
+}
+setTimeout(dailySnapshot, 60 * 1000).unref();
+setInterval(dailySnapshot, 6 * 60 * 60 * 1000).unref(); // checks every 6 hours; only makes one per day
+app.get('/api/admin/backup', admin, (req, res) => {
+  const name = 'loan-backup-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.db';
+  const file = path.join(BACKUP_DIR, 'download-' + crypto.randomUUID() + '.tmp');
+  try { snapshotTo(file); } catch (e) { return res.status(500).json({ error: 'Could not create the backup.' }); }
+  res.download(file, name, () => { try { fs.unlinkSync(file); } catch (e) {} });
+});
+
 app.listen(process.env.PORT || 3000, () => console.log('Running on http://localhost:' + (process.env.PORT || 3000)));
