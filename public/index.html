@@ -142,6 +142,7 @@ async function render(){
   if(!ME)try{await load()}catch{return A.innerHTML=authView()}
   const V={home,loan,wallet,contact,account,settings,repay,profile,contract,withdrawals,id:fID,personal:fPersonal,bank:fBank,signature:fSig}[view]||home;
   A.innerHTML=V()+(['id','personal','bank','signature'].includes(view)?'':navb()+bellHTML())+modalHTML();
+  if(MODAL==='withdrawOk')placeOk();
   if(view==='signature'&&!ME.profileLocked)initSig();
   if(view==='loan')calc();
   if(view==='id')loadIdPhotos();
@@ -213,11 +214,15 @@ function modalHTML(){if(!MODAL)return'';
   <div class="nfhd">Notifications<button onclick="closeModal()">✕</button></div>
   <div class="nflist">${NOTIFS.length?NOTIFS.map(n=>`<div class="nfcard"><div class="nfhead"><span class="nficon"></span><span class="nfapp">Assistant Support</span><span class="nftime">${timeAgo(n.created_at)}</span></div><div class="nfmsg">${n.message}</div></div>`).join(''):'<p class="mute" style="margin:16px 4px">No notifications yet.</p>'}</div></div></div>`}
  if(MODAL==='withdrawOk'){
-  return `<div class="modalbg" style="align-items:flex-start;padding-top:calc(14px + env(safe-area-inset-top,0px))" onclick="closeWithdrawOk()"><div class="modalcard" style="background:#f2b84b;color:#5a0a12;text-align:center;box-shadow:0 6px 24px #0004" onclick="event.stopPropagation()">
-  <div class="modalbody" style="padding:22px 22px 14px"><p style="margin:0;font-weight:700;font-size:15px;line-height:1.5">Withdrawal is processing.<br>Please check in Withdrawal Status.</p></div>
-  <div class="modalft" style="justify-content:center"><button style="color:#5a0a12;font-weight:800" onclick="closeWithdrawOk()">OK</button></div></div></div>`}
+  return `<div class="modalbg" style="display:block;padding:0" onclick="closeWithdrawOk()"><div id="okpop" class="modalcard" style="position:fixed;left:16px;right:16px;top:70px;max-width:none;height:200px;display:flex;flex-direction:column;background:#f2b84b;color:#5a0a12;text-align:center;box-shadow:0 6px 24px #0004" onclick="event.stopPropagation()">
+  <div class="modalbody" style="flex:1;display:flex;align-items:center;justify-content:center;padding:14px 22px"><p style="margin:0;font-weight:700;font-size:15px;line-height:1.6">Withdrawal is processing.<br>Please check in Withdrawal Status.</p></div>
+  <div class="modalft" style="justify-content:center;background:#fff"><button style="color:#5a0a12;font-weight:800;font-size:16px;padding:16px" onclick="closeWithdrawOk()">OK</button></div></div></div>`}
  return ''}
 async function doWithdraw(){try{await api('/withdraw',{method:'POST',body:{amount:$('#mwa').value,pin:$('#mwc').value}});await load();MODAL='withdrawOk';render()}catch(e){$('#mwerr').textContent=e.message}}
+// Makes the "Withdrawal is processing" popup cover exactly the account-balance card at the top of the Wallet page.
+function placeOk(){const p=document.getElementById('okpop'),c=document.getElementById('balcard');if(!p||!c)return;
+  window.scrollTo(0,0);const r=c.getBoundingClientRect();
+  p.style.left=r.left+'px';p.style.top=r.top+'px';p.style.width=r.width+'px';p.style.right='auto';p.style.height=r.height+'px'}
 function closeWithdrawOk(){MODAL=null;go('withdrawals')}
 
 let NOTIFS=[],NOTIF_UNREAD=0;
@@ -260,7 +265,7 @@ const AV='<svg viewBox="0 0 48 48" width="46" height="46"><circle cx="24" cy="24
 function wallet(){const a=ME.applications[0],bal=ME.balance||0;
  return `<div class="wrap" style="padding-top:16px">
  <div class="card" style="background:var(--g);color:#fff;display:flex;gap:14px;align-items:center;padding:14px">${AV}<div><b style="font-size:18px">Account</b><div style="font-size:13px;opacity:.85">${ME.phone}</div></div></div>
- <div class="card" style="text-align:center;padding:26px 16px"><div class="mute" style="letter-spacing:.06em">ACCOUNT BALANCE</div><div class="big" style="font-family:Georgia,serif;margin:8px 0">${peso(bal)}</div>${a?`<span class="latest">Latest Loan: ${peso(a.amount)}</span>`:''}</div>
+ <div class="card" id="balcard" style="text-align:center;padding:26px 16px"><div class="mute" style="letter-spacing:.06em">ACCOUNT BALANCE</div><div class="big" style="font-family:Georgia,serif;margin:8px 0">${peso(bal)}</div>${a?`<span class="latest">Latest Loan: ${peso(a.amount)}</span>`:''}</div>
  <button class="btn" onclick="openModal('withdraw')">Withdrawal</button>
  ${a?walletLoanCard(a):`<div class="card"><p style="margin:0 0 10px">No loan yet. Apply to see your progress here.</p><button class="btn" onclick="go('loan')">Apply for a loan</button></div>`}
  </div>`}
