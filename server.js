@@ -125,8 +125,10 @@ const token = (uid) => jwt.sign({ uid }, JWT_SECRET, { expiresIn: '7d' });
 
 app.post('/api/register', (req, res) => {
   const { password, consent } = req.body || {};
-  const phone = norm(req.body && req.body.phone);
-  if (!PHONE.test(phone)) return res.status(400).json({ error: 'Enter a valid phone number (7 to 15 digits).' });
+  // New accounts must use a mobile number made of digits only (no +, spaces, dashes or letters). Logging in
+  // still accepts the older format so members who registered earlier with a "+" can keep logging in.
+  const phone = String((req.body && req.body.phone) || '').trim();
+  if (!/^\d{7,15}$/.test(phone)) return res.status(400).json({ error: 'Mobile number must be numbers only (7 to 15 digits), with no spaces, letters or symbols.' });
   if (!password || password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
   if (consent !== true) return res.status(400).json({ error: 'You must accept the Privacy Notice to register.' });
   try {
@@ -301,7 +303,11 @@ app.delete('/api/admin/admins/:id', admin, (req, res) => {
 app.get('/api/admin/members', admin, (req, res) => {
   const q = norm(req.query && req.query.q || '').toLowerCase();
   let rows = db.prepare('SELECT id, phone, status, pin_hash, level_override, created_at FROM users ORDER BY id DESC').all().map(memberRow);
-  if (q) rows = rows.filter((r) => r.phone.toLowerCase().includes(q) || r.name.toLowerCase().includes((req.query.q || '').toLowerCase()));
+  if (q) {
+    const hasOrder = db.prepare("SELECT 1 FROM applications WHERE user_id=? AND order_no LIKE ?");
+    rows = rows.filter((r) => r.phone.toLowerCase().includes(q) || r.name.toLowerCase().includes((req.query.q || '').toLowerCase())
+      || !!hasOrder.get(r.id, '%' + q.replace(/[%_]/g, '') + '%'));
+  }
   res.json(rows);
 });
 app.get('/api/admin/members/:id', admin, (req, res) => {
@@ -338,6 +344,21 @@ app.post('/api/admin/members/:id/photo-delete', admin, (req, res) => {
   delete d[field];
   db.prepare('UPDATE profiles SET data=?, updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND section=?').run(JSON.stringify(d), uid, section);
   res.json({ ok: true });
+});
+// Staff can upload (or replace) a member's ID photo — front, back or selfie — on their behalf.
+app.post('/api/admin/members/:id/photo-upload', admin, upload.single('file'), (req, res) => {
+  const uid = +req.params.id;
+  const field = String((req.body && req.body.field) || '');
+  const drop = () => { if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} } };
+  if (!['front', 'back', 'selfie'].includes(field)) { drop(); return res.status(400).json({ error: 'Choose front, back or selfie.' }); }
+  if (!req.file) return res.status(400).json({ error: 'Upload a JPG or PNG under 5 MB.' });
+  if (!db.prepare('SELECT id FROM users WHERE id=?').get(uid)) { drop(); return res.status(404).json({ error: 'Member not found.' }); }
+  const cur = db.prepare("SELECT data FROM profiles WHERE user_id=? AND section='id'").get(uid);
+  let old = '';
+  try { old = cur ? JSON.parse(cur.data)[field] || '' : ''; } catch {}
+  adminSaveSection(uid, 'id', { [field]: req.file.filename });
+  if (old && /^[\w-]+\.jpg$/.test(old) && old !== req.file.filename) { try { fs.unlinkSync(path.join(UP, old)); } catch {} }
+  res.json({ ok: true, file: req.file.filename });
 });
 app.put('/api/admin/members/:id/identity', admin, (req, res) => {
   const uid = +req.params.id;
