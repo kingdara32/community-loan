@@ -13,6 +13,7 @@
 .tabs .on{color:#fff;border-color:var(--gold)}
 input,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:6px;font:inherit;margin:6px 0 12px;background:#fff}
 label{font-size:13px;color:var(--mute)}
+input:disabled,select:disabled{color:#111;-webkit-text-fill-color:#111;opacity:1;background:#eef0f3;border-color:#d1d5db;font-weight:500}
 .btn{display:block;width:100%;padding:14px;border:0;border-radius:10px;background:var(--r2);color:#fff;font:700 16px inherit;cursor:pointer;margin-top:8px}
 .btn.alt{background:#fff;color:var(--r2);border:2px solid var(--gold)}.btn.gold{background:#eea86a;border-radius:99px;width:auto;padding:14px 44px}
 .btn:disabled{opacity:.5}
@@ -148,15 +149,16 @@ async function render(){
 function authView(){
   const reg=tab==='register';
   return `<div class="hd" style="padding:34px 16px 0">Apply with us, apply with confidence.<div class="tabs"><button class="${!reg?'on':''}" onclick="tab='login';msg='';render()">Login</button><button class="${reg?'on':''}" onclick="tab='register';msg='';render()">Register</button></div></div>
-  <div class="wrap"><label>Mobile number</label><input id="ph" inputmode="tel" placeholder="Enter your phone number" autocomplete="username" value="${PH}">
+  <div class="wrap"><label>Mobile number</label><input id="ph" inputmode="${reg?'numeric':'tel'}" ${reg?`pattern="[0-9]*" maxlength="15" oninput="this.value=this.value.replace(/\\D/g,'')"`:''} placeholder="${reg?'Numbers only, e.g. 09171234567':'Enter your phone number'}" autocomplete="username" value="${reg?PH.replace(/\D/g,''):PH}">
   <label>${reg?'Set your password':'Password'}</label><input id="pw" type="password" autocomplete="${reg?'new-password':'current-password'}">
   ${reg?`<label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink)"><input id="cs" type="checkbox" style="width:auto;margin:4px 0"> <span>I have read and agree to the <a href="#" onclick="event.preventDefault();alert('Add your Privacy Notice and Terms here. State what data you collect, why, who sees it, how long you keep it, and how to request deletion (Data Privacy Act of 2012).')">Privacy Notice and Terms</a>.</span></label>`:''}
   <div class="err ${msg.startsWith('Account created')?'ok':''}">${msg}</div><button class="btn" onclick="auth(${reg})">${reg?'Create account':'Log in'}</button>
   <button class="btn alt" onclick="tab='${reg?'login':'register'}';msg='';render()">${reg?'Back to login':'Register'}</button></div>`;
 }
 async function auth(reg){
-  try{const r=await api(reg?'/register':'/login',{method:'POST',body:{phone:$('#ph').value.replace(/[\s-]/g,''),password:$('#pw').value,consent:reg?$('#cs').checked:undefined}});
-    if(reg){PH=$('#ph').value.replace(/[\s-]/g,'');tab='login';msg='Account created. Please log in.';render();return}
+  try{if(reg&&!/^\d{7,15}$/.test($('#ph').value.trim()))throw new Error('Mobile number must be numbers only (7 to 15 digits), with no spaces, letters or symbols.');
+    const r=await api(reg?'/register':'/login',{method:'POST',body:{phone:reg?$('#ph').value.trim():$('#ph').value.replace(/[\s-]/g,''),password:$('#pw').value,consent:reg?$('#cs').checked:undefined}});
+    if(reg){PH=$('#ph').value.trim();tab='login';msg='Account created. Please log in.';render();return}
     T=r.token;LS.setItem('t',T);ME=null;view='home';PH='';render()}catch(e){PH=$('#ph').value;msg=e.message;render()}
 }
 function logout(){T=null;ME=null;LS.removeItem('t');tab='login';render()}
@@ -177,7 +179,7 @@ function statusBadge(a){
 function statusDesc(a){if(!a)return'';return {pending:'Your application is being reviewed. We will notify you once a decision is made.',approved:'Your loan is approved and will be sent shortly.',disbursed:'Your loan has been sent to your bank account on file.',completed:'This loan has been fully repaid. Thank you.',rejected:'Your application was not approved this time.'}[a.status]||''}
 function stepFill(a){return {pending:1,approved:2,disbursed:3,completed:3}[a?a.status:'']||0}
 function stepper(fill,labels){return `<div class="steps">${labels.map((l,i)=>`<div class="step ${i<fill?'done':''}"><span class="dot">${i<fill?'✓':''}</span><span class="lbl">${l}</span></div>${i<labels.length-1?`<div class="line ${i<fill-1?'done':''}"></div>`:''}`).join('')}</div>`}
-function fmtDate(x){try{const s=String(x||'');return new Date(s.replace(' ','T')+(s.includes('Z')?'':'Z')).toLocaleDateString('en-PH',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return''}}
+function fmtDate(x){try{const s=String(x||'');return new Date(s.replace(' ','T')+(s.includes('Z')?'':'Z')).toLocaleDateString('en-PH',{timeZone:'Asia/Manila',day:'2-digit',month:'2-digit',year:'numeric'})}catch{return''}}
 function walletLoanCard(a){return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="mute">No: ${a.order_no||'—'}</span>${statusBadge(a)}</div>
  <div class="stat3" style="margin:12px 0"><div><b>${a.annual_rate}%</b><br><span class="mute">Interest/Mo</span></div><div><b>${a.term_months}</b><br><span class="mute">Months</span></div><div><b>${peso(a.amount)}</b><br><span class="mute">Principal</span></div></div>
  ${a.status!=='rejected'?stepper(stepFill(a),['Submit Loan','Approve','Receive Money']):''}
@@ -211,8 +213,8 @@ function modalHTML(){if(!MODAL)return'';
   <div class="nfhd">Notifications<button onclick="closeModal()">✕</button></div>
   <div class="nflist">${NOTIFS.length?NOTIFS.map(n=>`<div class="nfcard"><div class="nfhead"><span class="nficon"></span><span class="nfapp">Assistant Support</span><span class="nftime">${timeAgo(n.created_at)}</span></div><div class="nfmsg">${n.message}</div></div>`).join(''):'<p class="mute" style="margin:16px 4px">No notifications yet.</p>'}</div></div></div>`}
  if(MODAL==='withdrawOk'){
-  return `<div class="modalbg" onclick="closeWithdrawOk()"><div class="modalcard" style="background:#f2b84b;color:#5a0a12;text-align:center" onclick="event.stopPropagation()">
-  <div class="modalbody" style="padding:30px 22px"><p style="margin:0;font-weight:700;font-size:15px;line-height:1.5">Withdrawal is processing.<br>Please check in Withdrawal Status.</p></div>
+  return `<div class="modalbg" style="align-items:flex-start;padding-top:calc(14px + env(safe-area-inset-top,0px))" onclick="closeWithdrawOk()"><div class="modalcard" style="background:#f2b84b;color:#5a0a12;text-align:center;box-shadow:0 6px 24px #0004" onclick="event.stopPropagation()">
+  <div class="modalbody" style="padding:22px 22px 14px"><p style="margin:0;font-weight:700;font-size:15px;line-height:1.5">Withdrawal is processing.<br>Please check in Withdrawal Status.</p></div>
   <div class="modalft" style="justify-content:center"><button style="color:#5a0a12;font-weight:800" onclick="closeWithdrawOk()">OK</button></div></div></div>`}
  return ''}
 async function doWithdraw(){try{await api('/withdraw',{method:'POST',body:{amount:$('#mwa').value,pin:$('#mwc').value}});await load();MODAL='withdrawOk';render()}catch(e){$('#mwerr').textContent=e.message}}
